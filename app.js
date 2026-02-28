@@ -1,6 +1,6 @@
 // Configuración de Supabase
 const SUPABASE_URL = 'https://gqrlqrtoqujvpfanilzr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_PLn9H05OB_CFkUfrEy4W2A_-FSJ08qN';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxcmxxcnRvcXVqdnBmYW5pbHpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTg2MzcsImV4cCI6MjA4NzI5NDYzN30.4wqhRMDBuBpTC5WzzMdNXxUWrLSxMnf_lDtjUnsz4O4';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -105,12 +105,13 @@ function setupLoginModal() {
 
     closeBtn.addEventListener('click', () => modal.classList.remove('active'));
 
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn.addEventListener('click', async () => {
         isLoggedIn = false;
         localStorage.removeItem('isLoggedIn'); // Guardar en persistencia
         modal.classList.remove('active');
         updateModalView();
         renderProducts();
+        await supabaseClient.auth.signOut(); // Cierra sesión en Supabase Real
     });
 
     loginForm.addEventListener('submit', async (e) => {
@@ -123,16 +124,15 @@ function setupLoginModal() {
             submitBtn.textContent = 'Verificando...';
             submitBtn.disabled = true;
 
-            const { data, error } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('full_name', username)
-                .eq('password', password)
-                .single();
+            // Usa la Autenticación real de Supabase
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: username,
+                password: password,
+            });
 
             if (error) throw new Error('Usuario o contraseña no encontrados.');
 
-            if (data) {
+            if (data.session) {
                 isLoggedIn = true;
                 localStorage.setItem('isLoggedIn', 'true'); // Guardar sesión
                 modal.classList.remove('active');
