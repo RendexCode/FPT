@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Buscador de Productos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4285f4;
+            --bg-dark: #202124;
+            --bg-card: #303134;
+            --text-main: #e8eaed;
+            --text-muted: #9aa0a6;
+            --border: #3c4043;
+            --accent: #8ab4f8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .hero {
+            margin-top: 5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            transition: all 0.4s ease;
+        }
+
+        .hero.searching {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+        }
+
+        .hero h1 span:nth-child(1) { color: #4285f4; }
+        .hero h1 span:nth-child(2) { color: #ea4335; }
+        .hero h1 span:nth-child(3) { color: #fbbc05; }
+        .hero h1 span:nth-child(4) { color: #4285f4; }
+        .hero h1 span:nth-child(5) { color: #34a853; }
+        .hero h1 span:nth-child(6) { color: #ea4335; }
+
+        .search-container {
+            width: 100%;
+            max-width: 584px;
+            position: relative;
+        }
+
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 0.8rem 1.2rem 0.8rem 3.5rem;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: box-shadow 0.2s;
+        }
+
+        .search-box:focus {
+            box-shadow: 0 1px 6px rgba(0,0,0,0.5);
+            background: #3c4043;
+        }
+
+        .icon-search {
+            position: absolute;
+            left: 1.2rem;
+            color: var(--text-muted);
+        }
+
+        .product-count-badge {
+            position: absolute;
+            right: 1.2rem;
+            background: #3c4043;
+            color: var(--text-muted);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1.5rem;
+        }
+
+        .tasa-bcv {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            font-weight: 500;
+        }
+
+        .btn-main {
+            background: #3c4043;
+            border: 1px solid transparent;
+            color: #e8eaed;
+            padding: 0.6rem 1.5rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-main:active {
+            background: #4a4d51;
+            transform: scale(0.98);
+        }
+
+        .results-container {
+            width: 100%;
+            max-width: 600px;
+            display: none;
+            flex-direction: column;
+            margin-top: 2rem;
+        }
+
+        .results-container.active {
+            display: flex;
+        }
+
+        .result-item {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            animation: fadeIn 0.3s ease forwards;
+            user-select: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .result-item .code {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .result-item .title {
+            font-size: 1.2rem;
+            color: var(--accent);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .result-item .details {
+            font-size: 0.95rem;
+            display: flex;
+            gap: 1.2rem;
+            color: var(--text-muted);
+        }
+
+        .price-ves {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .price-usd {
+            color: #34a853;
+            font-weight: 600;
+        }
+
+        /* Floating Clear Button */
+        .fab-clear {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            background: #ea4335; /* Google Red */
+            color: white;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: none;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 1.5rem;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .fab-clear:active {
+            transform: scale(0.9);
+        }
+
+        .fab-clear.active {
+            display: flex;
+            animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero" id="hero">
+        <h1>
+            <span>P</span><span>r</span><span>o</span><span>d</span><span>u</span><span>c</span><span>t</span><span>o</span><span>s</span>
+        </h1>
+    </div>
+
+    <div class="search-container">
+        <div class="search-wrapper">
+            <i class="fa-solid fa-magnifying-glass icon-search"></i>
+            <input type="text" id="searchInput" class="search-box" placeholder="¿Qué estás buscando?" autocomplete="off">
+            <div class="product-count-badge" id="totalCountBadge">0</div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-main" id="searchBtn">Buscar</button>
+            <div class="tasa-bcv" id="tasaDisplay" style="display: none;">BCV: Bs. --</div>
+        </div>
+    </div>
+
+    <div id="resultsContainer" class="results-container">
+        <!-- Results -->
+    </div>
+
+    <button class="fab-clear" id="clearFab" title="Limpiar búsqueda">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <script>
+        let allProducts = [];
+
+        async function init() {
+            try {
+                const response = await fetch('productos.json');
+                const data = await response.json();
+                allProducts = data.productos;
+                
+                document.getElementById('totalCountBadge').innerText = allProducts.length;
+
+                if (data.tasa) {
+                    const tasaEl = document.getElementById('tasaDisplay');
+                    tasaEl.innerText = `BCV: Bs. ${data.tasa.toLocaleString('es-VE')}`;
+                    tasaEl.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function performSearch() {
+            const term = document.getElementById('searchInput').value.toLowerCase().trim();
+            const resultsContainer = document.getElementById('resultsContainer');
+            const hero = document.getElementById('hero');
+            const badge = document.getElementById('totalCountBadge');
+            const fab = document.getElementById('clearFab');
+
+            if (!term) {
+                resultsContainer.classList.remove('active');
+                hero.classList.remove('searching');
+                badge.innerText = allProducts.length;
+                fab.classList.remove('active');
+                return;
+            }
+
+            hero.classList.add('searching');
+            resultsContainer.classList.add('active');
+            fab.classList.add('active');
+            
+            const tokens = term.split(/\s+/);
+            const filtered = allProducts.filter(p => {
+                const desc = p.descripcion.toLowerCase();
+                const code = (p.codigo || "").toLowerCase();
+                return tokens.every(token => desc.includes(token) || code.includes(token));
+            });
+
+            badge.innerText = filtered.length;
+            renderResults(filtered);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            performSearch();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        document.getElementById('clearFab').onclick = clearSearch;
+
+        function renderResults(products) {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = '';
+
+            if (products.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">No se encontraron resultados para tu búsqueda.</p>';
+                return;
+            }
+
+            products.forEach((p) => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                
+                div.innerHTML = `
+                    <div class="code">${p.codigo || 'SIN CÓDIGO'}</div>
+                    <div class="title">${p.descripcion}</div>
+                    <div class="details">
+                        <span class="price-ves">Bs. ${p.precio_ves.toLocaleString('es-VE')}</span>
+                        <span class="price-usd">$${p.precio_usd.toFixed(2)}</span>
+                        <span>Stock: ${Math.floor(p.stock)}</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            window.scrollTo({ top: document.querySelector('.search-container').offsetTop - 20, behavior: 'smooth' });
+        }
+
+        document.getElementById('searchBtn').onclick = performSearch;
+        document.getElementById('searchInput').onkeypress = (e) => {
+            if (e.key === 'Enter') performSearch();
+        };
+
+        init();
+    </script>
+</body>
+</html>
