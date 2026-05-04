@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Buscador de Productos</title>
+    <title>FERRE-PINTURAS TINAQUILLO</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -14,7 +15,7 @@
             --text-main: #202124;
             --text-muted: #70757a;
             --border: #dfe1e5;
-            --accent: #1a0dab; /* Classic Google Link Blue */
+            --accent: #1a0dab;
         }
 
         * {
@@ -36,7 +37,7 @@
         }
 
         .hero {
-            margin-top: 5rem;
+            margin-top: 3rem;
             margin-bottom: 2rem;
             text-align: center;
             transition: all 0.4s ease;
@@ -47,14 +48,30 @@
             margin-bottom: 1rem;
         }
 
+        .hero .business-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
         .hero h1 {
-            font-size: 3.8rem;
+            font-size: 3.5rem;
             font-weight: 800;
             letter-spacing: -2px;
             background: linear-gradient(135deg, #4285f4, #9b51e0, #ea4335);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: inline-block;
+            margin-bottom: 0.2rem;
+        }
+
+        .hero .subtitle {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 400;
         }
 
         .search-container {
@@ -81,9 +98,10 @@
             transition: box-shadow 0.2s;
         }
 
-        .search-box:focus, .search-box:hover {
-            box-shadow: 0 1px 6px rgba(32,33,36,.28);
-            border-color: rgba(223,225,229,0);
+        .search-box:focus,
+        .search-box:hover {
+            box-shadow: 0 1px 6px rgba(32, 33, 36, .28);
+            border-color: rgba(223, 225, 229, 0);
         }
 
         .icon-search {
@@ -135,8 +153,7 @@
         }
 
         .btn-main:hover {
-            box-shadow: 0 1px 1px rgba(0,0,0,.1);
-            background-image: linear-gradient(top,#f8f8f8,#f1f1f1);
+            box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
             background-color: #f8f9fa;
             border: 1px solid #dadce0;
             color: #202124;
@@ -162,8 +179,13 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .result-item .code {
@@ -197,29 +219,24 @@
             font-weight: 600;
         }
 
-        /* Floating Clear Button */
         .fab-clear {
             position: fixed;
             bottom: 2rem;
             right: 2rem;
             width: 56px;
             height: 56px;
-            background: #ea4335; /* Google Red */
+            background: #ea4335;
             color: white;
             border-radius: 50%;
             display: none;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
             border: none;
             cursor: pointer;
             z-index: 100;
             font-size: 1.5rem;
             transition: transform 0.2s, opacity 0.2s;
-        }
-
-        .fab-clear:active {
-            transform: scale(0.9);
         }
 
         .fab-clear.active {
@@ -228,26 +245,34 @@
         }
 
         @keyframes popIn {
-            from { transform: scale(0); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div class="hero" id="hero">
-        <h1>
-            <span>P</span><span>r</span><span>o</span><span>d</span><span>u</span><span>c</span><span>t</span><span>o</span><span>s</span>
-        </h1>
+        <div class="business-name">Ferre-Pinturas Tinaquillo</div>
+        <h1>Productos</h1>
     </div>
 
     <div class="search-container">
         <div class="search-wrapper">
             <i class="fa-solid fa-magnifying-glass icon-search"></i>
-            <input type="text" id="searchInput" class="search-box" placeholder="¿Qué estás buscando?" autocomplete="off">
+            <input type="text" id="searchInput" class="search-box" placeholder="¿Qué estás buscando?"
+                autocomplete="off">
             <div class="product-count-badge" id="totalCountBadge">0</div>
         </div>
-        
+
         <div class="actions">
             <button class="btn-main" id="searchBtn">Buscar</button>
             <div class="tasa-bcv" id="tasaDisplay" style="display: none;">BCV: Bs. --</div>
@@ -270,7 +295,6 @@
                 const response = await fetch('productos.json');
                 const data = await response.json();
                 allProducts = data.productos;
-                
                 document.getElementById('totalCountBadge').innerText = allProducts.length;
 
                 if (data.tasa) {
@@ -301,12 +325,33 @@
             hero.classList.add('searching');
             resultsContainer.classList.add('active');
             fab.classList.add('active');
-            
+
             const tokens = term.split(/\s+/);
             const filtered = allProducts.filter(p => {
                 const desc = p.descripcion.toLowerCase();
                 const code = (p.codigo || "").toLowerCase();
                 return tokens.every(token => desc.includes(token) || code.includes(token));
+            });
+
+            // Sort results: exact start match first, then full term inclusion, then token matches
+            filtered.sort((a, b) => {
+                const descA = a.descripcion.toLowerCase();
+                const descB = b.descripcion.toLowerCase();
+                
+                // 1. Check if starts with exact term
+                const startsA = descA.startsWith(term);
+                const startsB = descB.startsWith(term);
+                if (startsA && !startsB) return -1;
+                if (!startsA && startsB) return 1;
+                
+                // 2. Check if contains full term
+                const includesA = descA.includes(term);
+                const includesB = descB.includes(term);
+                if (includesA && !includesB) return -1;
+                if (!includesA && includesB) return 1;
+                
+                // 3. Keep alphabetical or original order for the rest
+                return descA.localeCompare(descB);
             });
 
             badge.innerText = filtered.length;
@@ -319,37 +364,42 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        document.getElementById('clearFab').onclick = clearSearch;
-
         function renderResults(products) {
             const container = document.getElementById('resultsContainer');
             container.innerHTML = '';
 
             if (products.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">No se encontraron resultados para tu búsqueda.</p>';
+                container.innerHTML = `
+                    <div style="text-align: center; margin-top: 2rem; padding: 1rem;">
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">No se encontraron resultados para tu búsqueda.</p>
+                        <a href="https://wa.me/584124118115?text=Hola,%20busco%20un%20producto%20que%20no%20aparece%20en%20el%20catálogo" 
+                           style="background: #25d366; color: white; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+                           <i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i>
+                           Consultar por WhatsApp
+                        </a>
+                    </div>`;
                 return;
             }
 
             products.forEach((p) => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
-                
                 div.innerHTML = `
                     <div class="code">${p.codigo || 'SIN CÓDIGO'}</div>
                     <div class="title">${p.descripcion}</div>
                     <div class="details">
-                        <span class="price-ves">Bs. ${p.precio_ves.toLocaleString('es-VE')}</span>
+                        <span class="price-ves">Bs. ${p.price_ves ? p.price_ves.toLocaleString('es-VE') : p.precio_ves.toLocaleString('es-VE')}</span>
                         <span class="price-usd">$${p.precio_usd.toFixed(2)}</span>
                         <span>Stock: ${Math.floor(p.stock)}</span>
                     </div>
                 `;
                 container.appendChild(div);
             });
-            
             window.scrollTo({ top: document.querySelector('.search-container').offsetTop - 20, behavior: 'smooth' });
         }
 
         document.getElementById('searchBtn').onclick = performSearch;
+        document.getElementById('clearFab').onclick = clearSearch;
         document.getElementById('searchInput').onkeypress = (e) => {
             if (e.key === 'Enter') performSearch();
         };
@@ -357,4 +407,5 @@
         init();
     </script>
 </body>
+
 </html>
