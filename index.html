@@ -337,19 +337,19 @@
             filtered.sort((a, b) => {
                 const descA = a.descripcion.toLowerCase();
                 const descB = b.descripcion.toLowerCase();
-                
+
                 // 1. Check if starts with exact term
                 const startsA = descA.startsWith(term);
                 const startsB = descB.startsWith(term);
                 if (startsA && !startsB) return -1;
                 if (!startsA && startsB) return 1;
-                
+
                 // 2. Check if contains full term
                 const includesA = descA.includes(term);
                 const includesB = descB.includes(term);
                 if (includesA && !includesB) return -1;
                 if (!includesA && includesB) return 1;
-                
+
                 // 3. Keep alphabetical or original order for the rest
                 return descA.localeCompare(descB);
             });
@@ -390,7 +390,6 @@
                     <div class="details">
                         <span class="price-ves">Bs. ${p.price_ves ? p.price_ves.toLocaleString('es-VE') : p.precio_ves.toLocaleString('es-VE')}</span>
                         <span class="price-usd">$${p.precio_usd.toFixed(2)}</span>
-                        <span>Stock: ${Math.floor(p.stock)}</span>
                     </div>
                 `;
                 container.appendChild(div);
