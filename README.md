@@ -1,2 +1,2 @@
-# FTP
+# FPT
 Ferre-Pinturas Tinaquillo
