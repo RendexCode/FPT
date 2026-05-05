@@ -441,15 +441,67 @@
             z-index: 2001;
         }
 
-        /* ── Overlay ── */
-        .search-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 100;
+        .search-overlay.active { display: block; }
+
+        /* ── Favorites ── */
+        .favorites-section {
+            width: 100%;
+            max-width: 584px;
+            margin-top: 2.5rem;
+            transition: opacity 0.35s, transform 0.35s, max-height 0.35s, margin 0.35s;
+            opacity: 1;
         }
 
-        .search-overlay.active { display: block; }
+        body.search-active .favorites-section {
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            max-height: 0;
+            margin-top: 0;
+            overflow: hidden;
+        }
+
+        .favorites-section h2 {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .favorites-section h2 i {
+            color: #fbbc05;
+        }
+
+        .favorites-list {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        /* Star Button in results */
+        .favorite-btn {
+            color: #dfe1e5;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: color 0.2s, transform 0.2s;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            margin-left: auto;
+        }
+
+        .favorite-btn.active {
+            color: #fbbc05;
+        }
+
+        .favorite-btn:active {
+            transform: scale(1.3);
+        }
     </style>
 </head>
 
@@ -478,6 +530,11 @@
         </div>
     </div>
 
+    <div class="favorites-section" id="favoritesSection" style="display: none;">
+        <h2><i class="fa-solid fa-star"></i> Mis Favoritos</h2>
+        <div class="favorites-list" id="favoritesGrid"></div>
+    </div>
+
     <div id="resultsContainer" class="results-container"></div>
 
     <button class="fab-clear" id="clearFab" title="Limpiar búsqueda">
@@ -497,8 +554,96 @@
         let highlightedIndex = -1;
         let suggestionItems = [];
         let toastTimer = null;
+        let favorites = JSON.parse(localStorage.getItem('fav_products') || '[]');
 
-        function copyCode(codigo) {
+        function saveFavorites() {
+            localStorage.setItem('fav_products', JSON.stringify(favorites));
+            renderFavorites();
+        }
+
+        function toggleFavorite(codigo, event) {
+            if (event) event.stopPropagation();
+            const index = favorites.indexOf(codigo);
+            if (index > -1) {
+                favorites.splice(index, 1);
+            } else {
+                favorites.push(codigo);
+            }
+            saveFavorites();
+            
+            // Update star icons in results if visible
+            const stars = document.querySelectorAll(`.favorite-btn[data-codigo="${codigo}"]`);
+            stars.forEach(star => {
+                star.classList.toggle('active', favorites.includes(codigo));
+                const icon = star.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-solid', favorites.includes(codigo));
+                    icon.classList.toggle('fa-regular', !favorites.includes(codigo));
+                }
+            });
+        }
+
+        function renderFavorites() {
+            const section = document.getElementById('favoritesSection');
+            const grid = document.getElementById('favoritesGrid');
+            
+            if (favorites.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            section.style.display = 'block';
+            grid.innerHTML = '';
+            
+            favorites.forEach(codigo => {
+                const product = allProducts.find(p => p.codigo === codigo);
+                if (!product) return;
+                
+                const item = createProductItem(product);
+                grid.appendChild(item);
+            });
+        }
+
+        function createProductItem(p) {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+
+            const priceBs = tasaActual > 0 ? (p.precio_usd * tasaActual) : (p.price_ves || p.precio_ves || 0);
+            const codigo = (p.codigo || '').trim();
+            const isFav = favorites.includes(codigo);
+            const imgId = `img-${codigo.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+            div.innerHTML = `
+                <img id="${imgId}"
+                     class="result-thumb hidden"
+                     src="uploads/${encodeURIComponent(codigo)}.jpg"
+                     alt="${p.descripcion}"
+                     data-exts="png,jpeg,webp"
+                     data-codigo="${encodeURIComponent(codigo)}"
+                     onerror="tryNextExt(this)"
+                     onload="this.classList.remove('hidden')"
+                     onclick="openImageModal(this.src)"
+                     style="cursor: zoom-in;">
+                <div class="result-info">
+                    <div class="code" onclick="copyCode('${codigo}', event)" title="Toca para copiar">
+                        <i class="fa-regular fa-copy" style="font-size:0.7rem;"></i>
+                        ${codigo || 'SIN CÓDIGO'}
+                    </div>
+                    <div class="title">${p.descripcion}</div>
+                    <div class="details">
+                        <span class="price-ves">Bs. ${priceBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span class="price-usd">$${p.precio_usd.toFixed(2)}</span>
+                        <div class="favorite-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${codigo}', event)" data-codigo="${codigo}">
+                            <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        function copyCode(codigo, event) {
+            if (event) event.stopPropagation();
             if (!codigo) return;
             navigator.clipboard.writeText(codigo).then(() => {
                 const toast = document.getElementById('copyToast');
@@ -506,7 +651,6 @@
                 clearTimeout(toastTimer);
                 toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
             }).catch(() => {
-                // Fallback for browsers without clipboard API
                 const el = document.createElement('textarea');
                 el.value = codigo;
                 el.style.position = 'fixed';
@@ -562,6 +706,8 @@
                 const data = await response.json();
                 allProducts = data.productos;
                 document.getElementById('totalCountBadge').innerText = allProducts.length;
+
+                renderFavorites();
 
                 const tasaEl = document.getElementById('tasaDisplay');
                 if (tasaActual > 0) {
@@ -791,45 +937,8 @@
             }
 
             products.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-
-                let priceBs = 0;
-                if (tasaActual > 0) {
-                    priceBs = p.precio_usd * tasaActual;
-                } else {
-                    priceBs = p.price_ves || p.precio_ves || 0;
-                }
-
-                // Try image with fallback extensions: jpg → png → jpeg → webp
-                const codigo = (p.codigo || '').trim();
-                const imgId  = `img-${codigo.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                const imgExts = ['jpg','png','jpeg','webp'];
-
-                div.innerHTML = `
-                    <img id="${imgId}"
-                         class="result-thumb hidden"
-                         src="uploads/${encodeURIComponent(codigo)}.jpg"
-                         alt="${p.descripcion}"
-                         data-exts="png,jpeg,webp"
-                         data-codigo="${encodeURIComponent(codigo)}"
-                         onerror="tryNextExt(this)"
-                         onload="this.classList.remove('hidden')"
-                         onclick="openImageModal(this.src)"
-                         style="cursor: zoom-in;">
-                    <div class="result-info">
-                        <div class="code" onclick="copyCode('${codigo}')" title="Toca para copiar">
-                            <i class="fa-regular fa-copy" style="font-size:0.7rem;"></i>
-                            ${codigo || 'SIN CÓDIGO'}
-                        </div>
-                        <div class="title">${p.descripcion}</div>
-                        <div class="details">
-                            <span class="price-ves">Bs. ${priceBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            <span class="price-usd">$${p.precio_usd.toFixed(2)}</span>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(div);
+                const item = createProductItem(p);
+                container.appendChild(item);
             });
 
             window.scrollTo({ top: document.getElementById('searchContainer').offsetTop - 16, behavior: 'smooth' });
