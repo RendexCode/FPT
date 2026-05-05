@@ -289,17 +289,44 @@
 
     <script>
         let allProducts = [];
+        let tasaActual = 0;
 
         async function init() {
             try {
+                // Obtener BCV automáticamente
+                try {
+                    const bcvRes = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                    if (bcvRes.ok) {
+                        const bcvData = await bcvRes.json();
+                        const rate = bcvData.promedio || bcvData.valor;
+                        if (rate) {
+                            tasaActual = rate;
+                            localStorage.setItem('tasa_bcv', tasaActual);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('No se pudo obtener la tasa BCV automática. Usando la última guardada.', e);
+                }
+
+                if (!tasaActual) {
+                    const savedTasa = localStorage.getItem('tasa_bcv');
+                    if (savedTasa) {
+                        tasaActual = parseFloat(savedTasa);
+                    }
+                }
+
                 const response = await fetch('productos.json');
                 const data = await response.json();
                 allProducts = data.productos;
                 document.getElementById('totalCountBadge').innerText = allProducts.length;
 
-                if (data.tasa) {
-                    const tasaEl = document.getElementById('tasaDisplay');
-                    tasaEl.innerText = `BCV: Bs. ${data.tasa.toLocaleString('es-VE')}`;
+                const tasaEl = document.getElementById('tasaDisplay');
+                if (tasaActual > 0) {
+                    tasaEl.innerText = `BCV: Bs. ${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    tasaEl.style.display = 'block';
+                } else if (data.tasa) {
+                    tasaActual = data.tasa;
+                    tasaEl.innerText = `BCV: Bs. ${data.tasa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     tasaEl.style.display = 'block';
                 }
             } catch (error) {
@@ -337,19 +364,19 @@
             filtered.sort((a, b) => {
                 const descA = a.descripcion.toLowerCase();
                 const descB = b.descripcion.toLowerCase();
-
+                
                 // 1. Check if starts with exact term
                 const startsA = descA.startsWith(term);
                 const startsB = descB.startsWith(term);
                 if (startsA && !startsB) return -1;
                 if (!startsA && startsB) return 1;
-
+                
                 // 2. Check if contains full term
                 const includesA = descA.includes(term);
                 const includesB = descB.includes(term);
                 if (includesA && !includesB) return -1;
                 if (!includesA && includesB) return 1;
-
+                
                 // 3. Keep alphabetical or original order for the rest
                 return descA.localeCompare(descB);
             });
@@ -384,12 +411,21 @@
             products.forEach((p) => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
+                
+                let priceBs = 0;
+                if (tasaActual > 0) {
+                    priceBs = p.precio_usd * tasaActual;
+                } else {
+                    priceBs = p.price_ves || p.precio_ves || 0;
+                }
+
                 div.innerHTML = `
                     <div class="code">${p.codigo || 'SIN CÓDIGO'}</div>
                     <div class="title">${p.descripcion}</div>
                     <div class="details">
-                        <span class="price-ves">Bs. ${p.price_ves ? p.price_ves.toLocaleString('es-VE') : p.precio_ves.toLocaleString('es-VE')}</span>
+                        <span class="price-ves">Bs. ${priceBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         <span class="price-usd">$${p.precio_usd.toFixed(2)}</span>
+                        <span>Stock: ${Math.floor(p.stock)}</span>
                     </div>
                 `;
                 container.appendChild(div);
