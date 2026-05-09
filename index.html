@@ -819,35 +819,53 @@
             margin: 0;
         }
 
-        /* ── Stock Badge ── */
-        .stock-badge {
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 8px;
+        .card-footer {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 6px;
-            transition: transform 0.2s;
+            padding-top: 12px;
+            margin-top: 12px;
+            border-top: 1px solid var(--border);
         }
 
-        .result-item .stock-badge {
-            position: absolute;
-            bottom: 1rem;
-            right: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            background: #fff;
-            border: 1px solid var(--border);
+        .footer-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .card-action-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.2s, transform 0.2s;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-action-btn:active { transform: scale(0.9); }
+        .card-action-btn.active { color: #fbbc05; }
+        .card-action-btn.share-btn:hover { color: var(--primary); }
+
+        .stock-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .stock-badge svg {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
         }
 
-        .stock-in { color: #1e8e3e; border-color: #ceead6 !important; }
-        .stock-low { color: #f29900; border-color: #fef7e0 !important; }
-        .stock-out { color: #d93025; border-color: #fce8e6 !important; }
+        .stock-in { color: #1e8e3e; }
+        .stock-low { color: #f29900; }
+        .stock-out { color: #d93025; }
 
         /* ── Share Button ── */
         .btn-share {
@@ -1188,15 +1206,29 @@
                         ${codigo || 'SIN CÓDIGO'}
                     </div>
                     <div class="title">${p.nombre}</div>
-                    ${getStockBadge(p.stock)}
                     <div class="price-container">
                         ${p.precio_ves > 0 ? `<span class="price-ves">Bs. ${p.precio_ves.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>` : ''}
                         ${(p.precio_usd > 0) ? `<span class="price-usd">$${p.precio_usd.toFixed(2)}</span>` : ''}
                         ${(p.precio_divisa > 0) ? `<span class="price-divisa">$${p.precio_divisa.toFixed(2)}</span>` : ''}
                     </div>
-                </div>
-                <div class="favorite-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${codigo}', event)" data-codigo="${codigo}">
-                    <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                    
+                    <div class="card-footer">
+                        <div class="footer-actions">
+                            <button class="card-action-btn ${isFav ? 'active' : ''}" 
+                                    onclick="toggleFavorite('${codigo}', event)" 
+                                    title="Favoritos">
+                                <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                            </button>
+                            <button class="card-action-btn share-btn" 
+                                    onclick="event.stopPropagation(); shareProduct(${JSON.stringify(p).replace(/"/g, '&quot;')})" 
+                                    title="Compartir">
+                                <i class="fa-solid fa-share-nodes"></i>
+                            </button>
+                        </div>
+                        <div class="stock-info">
+                            ${getStockBadge(p.stock)}
+                        </div>
+                    </div>
                 </div>
             `;
             return div;
