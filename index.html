@@ -1061,13 +1061,14 @@
             window.scrollTo({ top: document.getElementById('categoriesBar').offsetTop - 16, behavior: 'smooth' });
         }
 
-        function getStockBadge(stock) {
+        function getStockBadge(stock, unidad) {
             const s = parseFloat(stock || 0);
+            const u = unidad || 'Unid.';
             const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`;
             
-            if (s <= 0) return `<span class="stock-badge stock-out">${icon} ${s}</span>`;
-            if (s <= 10) return `<span class="stock-badge stock-low">${icon} ${s}</span>`;
-            return `<span class="stock-badge stock-in">${icon} ${s}</span>`;
+            if (s <= 0) return `<span class="stock-badge stock-out">${icon} ${s} ${u}</span>`;
+            if (s <= 10) return `<span class="stock-badge stock-low">${icon} ${s} ${u}</span>`;
+            return `<span class="stock-badge stock-in">${icon} ${s} ${u}</span>`;
         }
 
         async function shareProduct(p) {
@@ -1226,7 +1227,7 @@
                             </button>
                         </div>
                         <div class="stock-info">
-                            ${getStockBadge(p.stock)}
+                            ${getStockBadge(p.stock, p.unidad_medida)}
                         </div>
                     </div>
                 </div>
@@ -1260,7 +1261,7 @@
             
             // Re-inject stock badge and desc
             desc.innerHTML = `
-                <div style="margin-bottom: 1rem;">${getStockBadge(p.stock)}</div>
+                <div style="margin-bottom: 1rem;">${getStockBadge(p.stock, p.unidad_medida)}</div>
                 <div class="detail-desc-text">${p.descripcion || 'Sin descripción adicional.'}</div>
             `;
 
