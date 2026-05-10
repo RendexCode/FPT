@@ -2371,9 +2371,8 @@
             const container = document.getElementById('resultsContainer');
             const term = (document.getElementById('searchInput').value || '').trim();
 
-            // EXCLUIR FAVORITOS: Si un producto ya está arriba, no lo mostramos abajo
-            const normFavs = favorites.map(f => String(f).toUpperCase().trim());
-            const filteredProducts = products.filter(p => !normFavs.includes(String(p.codigo).toUpperCase().trim()));
+            // Mostrar todos los productos que coincidan, estén en favoritos o no
+            const filteredProducts = products;
 
             if (filteredProducts.length === 0 && term) {
                 container.innerHTML = `
