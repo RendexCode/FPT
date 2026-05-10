@@ -11,33 +11,42 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #4285f4;
-            --primary-gradient: linear-gradient(135deg, #4285f4, #00d2ff);
-            --bg-dark: #f0f2f5;
-            --bg-card: #ffffff;
-            --text-main: #1c1e21;
-            --text-muted: #65676b;
-            --border: #e4e6eb;
-            --accent: #1877f2;
-            --success: #00a400;
-            --discount: #e41e3f;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --glass: rgba(255, 255, 255, 0.8);
+            --primary: #2c3e50;
+            --primary-light: #34495e;
+            --accent: #f1c40f;
+            --success: #27ae60;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #2c3e50;
+            --text-muted: #7f8c8d;
+            --border: #e9ecef;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --radius: 16px;
+        }
+
+        [data-theme="dark"] {
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text: #e0e0e0;
+            --text-muted: #b0b0b0;
+            --border: #333333;
+            --shadow: 0 4px 20px rgba(0,0,0,0.4);
+            --primary: #3498db;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Outfit', sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background-color: var(--bg-dark);
-            background-image: radial-gradient(at 0% 0%, rgba(66, 133, 244, 0.05) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(234, 67, 53, 0.05) 0px, transparent 50%);
-            color: var(--text-main);
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -819,53 +828,149 @@
             margin: 0;
         }
 
-        .card-footer {
+        /* ── Action Labels (New/Offer) ── */
+        .badge-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 12px;
-            margin-top: 12px;
-            border-top: 1px solid var(--border);
-        }
-
-        .footer-actions {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .card-action-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: color 0.2s, transform 0.2s;
-            padding: 0;
-            display: flex;
-            align-items: center;
-        }
-
-        .card-action-btn:active { transform: scale(0.9); }
-        .card-action-btn.active { color: #fbbc05; }
-        .card-action-btn.share-btn:hover { color: var(--primary); }
-
-        .stock-badge {
-            font-size: 0.85rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 5px;
+            z-index: 2;
         }
 
-        .stock-badge svg {
-            width: 16px;
-            height: 16px;
+        .promo-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .stock-in { color: #1e8e3e; }
-        .stock-low { color: #f29900; }
-        .stock-out { color: #d93025; }
+        .badge-new { background: var(--success); color: white; }
+        .badge-offer { background: #e74c3c; color: white; }
+
+        /* ── Skeleton Loading ── */
+        .skeleton {
+            background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            height: 350px;
+            border-radius: var(--radius);
+            background: var(--card-bg);
+            padding: 15px;
+        }
+
+        .skeleton-img { height: 180px; border-radius: 12px; margin-bottom: 15px; }
+        .skeleton-text { height: 15px; border-radius: 4px; margin-bottom: 10px; }
+        .skeleton-price { height: 25px; width: 60%; border-radius: 4px; }
+
+        /* ── Theme Toggle ── */
+        .theme-toggle {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        /* ── Shopping List FAB ── */
+        .list-fab {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            background: var(--primary);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .list-fab span {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--accent);
+            color: var(--primary);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
+        /* ── Login Modal ── */
+        #loginModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-content {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow);
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+        }
 
         /* ── Share Button ── */
         .btn-share {
@@ -1026,9 +1131,113 @@
         let highlightedIndex = -1;
         let suggestionItems = [];
         let toastTimer = null;
+        let categories = ['Todos'];
         let activeCategory = 'Todos';
+        let exchangeRate = 0;
+        let shoppingList = [];
+        let isAdmin = false;
         let favorites = JSON.parse(localStorage.getItem('fav_products') || '[]');
         let recentlyViewed = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
+
+        // ── Helper: Es Nuevo? ──
+        function isNew(dateStr) {
+            if (!dateStr) return false;
+            const created = new Date(dateStr);
+            const now = new Date();
+            const diff = (now - created) / (1000 * 60 * 60 * 24);
+            return diff <= 7;
+        }
+
+        // ── Dark Mode ──
+        function toggleDarkMode() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('fpt-theme', target);
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const btn = document.getElementById('themeBtn');
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            btn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        }
+
+        // ── Skeletons ──
+        function showSkeletons() {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = Array(8).fill(0).map(() => `
+                <div class="skeleton-card">
+                    <div class="skeleton-img skeleton"></div>
+                    <div class="skeleton-text skeleton" style="width: 40%"></div>
+                    <div class="skeleton-text skeleton"></div>
+                    <div class="skeleton-price skeleton"></div>
+                </div>
+            `).join('');
+        }
+
+        // ── Shopping List ──
+        function addToList(codigo) {
+            const product = allProducts.find(p => String(p.codigo) === String(codigo));
+            if (!product) return;
+            shoppingList.push(product);
+            updateListUI();
+            
+            const fab = document.getElementById('listFab');
+            fab.style.transform = 'scale(1.2)';
+            setTimeout(() => fab.style.transform = 'scale(1)', 200);
+        }
+
+        function updateListUI() {
+            const count = document.getElementById('listCount');
+            const fab = document.getElementById('listFab');
+            count.innerText = shoppingList.length;
+            fab.style.display = shoppingList.length > 0 ? 'flex' : 'none';
+        }
+
+        function showShoppingList() {
+            let text = "🛍️ *Mi Pedido en Ferre-Pinturas*\n\n";
+            let total = 0;
+            shoppingList.forEach((p, i) => {
+                text += `${i+1}. ${p.nombre} - $${p.precio_usd.toFixed(2)}\n`;
+                total += p.precio_usd;
+            });
+            text += `\n💰 *Total estimado: $${total.toFixed(2)}*`;
+            
+            const url = `https://wa.me/584124118115?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+
+        // ── Admin Login ──
+        function openLogin() {
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        function closeLogin() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        async function attemptLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+
+            const { data, error } = await supabase
+                .from('administradores')
+                .select('*')
+                .eq('usuario', user)
+                .eq('clave', pass)
+                .single();
+
+            if (data) {
+                isAdmin = true;
+                localStorage.setItem('fpt-admin', 'true');
+                alert(`¡Bienvenido ${data.nombre}!`);
+                closeLogin();
+                location.reload();
+            } else {
+                alert('Credenciales incorrectas');
+            }
+        }
 
         function saveFavorites() {
             localStorage.setItem('fav_products', JSON.stringify(favorites));
@@ -1069,19 +1278,15 @@
             let iconColor = 'currentColor';
 
             if (u.includes('gal') || u.includes('lit') || u.includes('cuñ')) {
-                // Líquido / Pintura - Gota azul
                 icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
                 iconColor = '#3498db';
             } else if (u.includes('caj')) {
-                // Cajas - Marrón
                 icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`;
                 iconColor = '#8d6e63';
             } else if (u.includes('rol')) {
-                // Rollos - Teal
                 icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 18c3.314 0 6-2.686 6-6s-2.686-6-6-6-6 2.686-6 6 2.686 6 6 6z"/><path d="M12 14c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z"/></svg>`;
                 iconColor = '#4db6ac';
             } else {
-                // Unidades / Ferretería - Plata (Wrench)
                 icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
                 iconColor = '#90a4ae';
             }
@@ -1119,14 +1324,11 @@
         }
 
         function addToRecentlyViewed(product) {
-            // Remove if already exists (to move it to the front)
             recentlyViewed = recentlyViewed.filter(p => p.codigo !== product.codigo);
-            // Add to front
             recentlyViewed.unshift({
                 codigo: product.codigo,
                 nombre: product.nombre
             });
-            // Keep only last 10
             recentlyViewed = recentlyViewed.slice(0, 10);
             saveRecentlyViewed();
         }
@@ -1172,7 +1374,6 @@
             }
             saveFavorites();
 
-            // Update star icons in results if visible
             const stars = document.querySelectorAll(`.favorite-btn[data-codigo="${codigo}"]`);
             stars.forEach(star => {
                 star.classList.toggle('active', favorites.includes(codigo));
@@ -1248,11 +1449,21 @@
                                     title="Compartir">
                                 <i class="fa-solid fa-share-nodes"></i>
                             </button>
+                            <button class="card-action-btn" 
+                                    onclick="event.stopPropagation(); addToList('${codigo}')" 
+                                    title="Añadir a lista">
+                                <i class="fa-solid fa-plus-circle"></i>
+                            </button>
                         </div>
                         <div class="stock-info">
                             ${getStockBadge(p.stock, p.unidad_medida)}
                         </div>
                     </div>
+                </div>
+
+                <div class="badge-container">
+                    ${isNew(p.created_at) ? '<span class="promo-badge badge-new">Nuevo</span>' : ''}
+                    ${p.es_oferta ? '<span class="promo-badge badge-offer">Oferta</span>' : ''}
                 </div>
             `;
             return div;
