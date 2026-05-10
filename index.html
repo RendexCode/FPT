@@ -1479,10 +1479,16 @@
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 15px; align-items: center; border: 2px dashed var(--border); padding: 20px; border-radius: 20px; background: var(--bg);">
                         <img id="editImagePreview" src="placeholder.jpg" style="width: 120px; height: 120px; object-fit: cover; border-radius: 15px; box-shadow: var(--shadow);">
                         <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
-                        <button type="button" class="btn-seller" style="background: var(--card-bg); border: 1px solid var(--border); color: var(--text); height: 45px; width: 100%; border-radius: 12px;" onclick="document.getElementById('imageInput').click()">
-                            <i class="fa-solid fa-image"></i> Seleccionar o Tomar Foto
-                        </button>
-                        <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0;">La foto se comprimirá automáticamente</p>
+                        
+                        <div style="display: flex; gap: 10px; width: 100%;">
+                            <button type="button" class="btn-seller" style="flex: 1; background: var(--primary); color: white; height: 45px; border-radius: 12px;" onclick="openPhotoCamera()">
+                                <i class="fa-solid fa-camera"></i> Cámara
+                            </button>
+                            <button type="button" class="btn-seller" style="flex: 1; background: var(--card-bg); border: 1px solid var(--border); color: var(--text); height: 45px; border-radius: 12px;" onclick="document.getElementById('imageInput').click()">
+                                <i class="fa-solid fa-image"></i> Galería
+                            </button>
+                        </div>
+                        <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0;">Foto optimizada automáticamente</p>
                     </div>
                 </div>
 
@@ -1615,7 +1621,32 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Photo Camera Modal -->
+    <div id="photoCameraModal" class="admin-modal" style="display:none; z-index:9999; background:rgba(0,0,0,0.95);">
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: #000;">
+            <!-- Header -->
+            <div style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);">
+                <h2 style="margin: 0; font-size: 1.2rem; color: white;"><i class="fa-solid fa-camera"></i> Tomar Foto</h2>
+                <button class="circle-btn" onclick="closePhotoCamera()" style="background: rgba(255,255,255,0.2); color: white; border: none;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Viewfinder -->
+            <div style="flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                <div id="photoReader" style="width: 100%; height: 100%;"></div>
+                <!-- Mira de enfoque -->
+                <div style="position: absolute; width: 250px; height: 250px; border: 2px solid rgba(255,255,255,0.3); border-radius: 20px; pointer-events: none;"></div>
+            </div>
+
+            <!-- Controls -->
+            <div style="padding: 2rem; display: flex; justify-content: center; background: rgba(0,0,0,0.5);">
+                <button onclick="takePhotoSnapshot()" style="width: 80px; height: 80px; border-radius: 50%; border: 5px solid white; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: white;"></div>
+                </button>
+            </div>
+        </div>
+    </div>
     <div id="scannerModal" class="admin-modal">
         <div style="width: 85%; max-width: 400px; position: relative; background: #000; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 2px solid var(--border);">
             <!-- Botón cerrar flotante -->
@@ -1712,7 +1743,64 @@
             }
         }
 
-        async function compressAndUpload(file, fileName) {
+        let photoQrCode = null;
+
+        async function openPhotoCamera() {
+            const modal = document.getElementById('photoCameraModal');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            setTimeout(() => {
+                photoQrCode = new Html5Qrcode("photoReader");
+                photoQrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 20, aspectRatio: 1.0 },
+                    () => {}, // No scan needed
+                    () => {}
+                ).catch(err => {
+                    console.error(err);
+                    alert("No se pudo acceder a la cámara");
+                    closePhotoCamera();
+                });
+            }, 300);
+        }
+
+        async function closePhotoCamera() {
+            const modal = document.getElementById('photoCameraModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            if (photoQrCode) {
+                await photoQrCode.stop();
+                photoQrCode = null;
+            }
+        }
+
+        async function takePhotoSnapshot() {
+            const video = document.querySelector('#photoReader video');
+            if (!video) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            canvas.toBlob((blob) => {
+                const file = new File([blob], "photo_capture.jpg", { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                document.getElementById('imageInput').files = dataTransfer.files;
+                
+                // Actualizar preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('editImagePreview').src = e.target.result;
+                    closePhotoCamera();
+                    showToast("📸 Foto capturada");
+                };
+                reader.readAsDataURL(blob);
+            }, 'image/jpeg', 0.9);
+        }
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.src = URL.createObjectURL(file);
