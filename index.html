@@ -1696,6 +1696,37 @@
         const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}`;
 
         let allProducts = [];
+
+        async function loadProducts() {
+            try {
+                const { data, error } = await _supabase.from('productos').select('*').order('nombre');
+                if (error) throw error;
+                
+                allProducts = data.map(p => ({
+                    ...p,
+                    codigo: String(p.codigo || '').toUpperCase().trim(),
+                    descripcion: String(p.descripcion || '').trim(),
+                    precio_usd: parseFloat(p.precio_usd) || 0,
+                    precio_divisa: parseFloat(p.precio_divisa) || 0,
+                    stock: parseFloat(p.stock) || 0,
+                    imagen: `${STORAGE_URL}/${p.codigo}.jpg`
+                }));
+
+                renderFavorites();
+                renderRecentlyViewed();
+                
+                // Si hay búsqueda activa, refrescarla
+                const term = document.getElementById('searchInput').value;
+                if (term) performSearch();
+
+                // Actualizar badge total
+                document.getElementById('totalCountBadge').innerText = allProducts.length;
+                
+            } catch (err) {
+                console.error("Error al cargar productos:", err);
+            }
+        }
+
         let highlightedIndex = -1;
         let suggestionItems = [];
         let toastTimer = null;
