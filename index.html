@@ -2369,8 +2369,14 @@
             const container = document.getElementById('resultsContainer');
             const term = (document.getElementById('searchInput').value || '').trim();
 
-            // Mostrar todos los productos que coincidan, estén en favoritos o no
-            const filteredProducts = products;
+            // LÓGICA DE DEDUPLICACIÓN: 
+            // Si NO hay búsqueda (catálogo completo), ocultamos favoritos abajo porque ya están arriba.
+            // Si HAY búsqueda, mostramos todo (incluyendo favoritos) para que el usuario encuentre lo que busca.
+            let filteredProducts = products;
+            if (!term) {
+                const normFavs = favorites.map(f => String(f).toUpperCase().trim());
+                filteredProducts = products.filter(p => !normFavs.includes(String(p.codigo).toUpperCase().trim()));
+            }
 
             if (filteredProducts.length === 0 && term) {
                 container.innerHTML = `
