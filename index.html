@@ -1477,7 +1477,7 @@
                 <div class="form-group">
                     <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Foto del Producto</label>
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 15px; align-items: center; border: 2px dashed var(--border); padding: 20px; border-radius: 20px; background: var(--bg);">
-                        <img id="editImagePreview" src="placeholder.jpg" style="width: 120px; height: 120px; object-fit: cover; border-radius: 15px; box-shadow: var(--shadow);">
+                        <img id="editImagePreview" src="https://placehold.co/400x400?text=Sin+Imagen" style="width: 120px; height: 120px; object-fit: cover; border-radius: 15px; box-shadow: var(--shadow);">
                         <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
                         
                         <div style="display: flex; gap: 10px; width: 100%;">
@@ -1728,7 +1728,7 @@
                 document.getElementById('editPriceDivisa').value = '';
                 document.getElementById('editStock').value = '';
                 document.getElementById('editUnidad').value = 'Unid.';
-                    document.getElementById('editImagePreview').src = 'https://placehold.co/400x400?text=Sin+Imagen';
+                document.getElementById('editImagePreview').src = 'https://raw.githubusercontent.com/fpt-systems/assets/main/placeholder.jpg';
             }
             modal.classList.add('active');
         }
