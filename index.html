@@ -1670,6 +1670,7 @@
         #reader__scan_region { display: none !important; } /* Ocultar cuadros de la librería */
     </style>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
 
         const SUPABASE_URL = 'https://ztdiywbobtsiwegjxprg.supabase.co';
@@ -1727,7 +1728,7 @@
                 document.getElementById('editPriceDivisa').value = '';
                 document.getElementById('editStock').value = '';
                 document.getElementById('editUnidad').value = 'Unid.';
-                document.getElementById('editImagePreview').src = 'placeholder.jpg';
+                    document.getElementById('editImagePreview').src = 'https://placehold.co/400x400?text=Sin+Imagen';
             }
             modal.classList.add('active');
         }
