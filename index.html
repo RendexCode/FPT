@@ -1679,18 +1679,6 @@
             }
         });
 
-        // Suscripción Realtime: Actualizar catálogo automáticamente en todos los clientes
-        const channel = _supabase
-            .channel('realtime-productos')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'productos' },
-                (payload) => {
-                    console.log('Cambio detectado en tiempo real:', payload.eventType);
-                    loadProducts(); // Recarga y renderiza todo
-                }
-            )
-            .subscribe();
 
         const BUCKET_NAME = 'productos';
         const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}`;
@@ -2641,6 +2629,19 @@
         }
 
         init();
+
+        // ── Suscripción Realtime (Al final para asegurar que loadProducts esté definido) ──
+        _supabase
+            .channel('realtime-productos')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'productos' },
+                (payload) => {
+                    console.log('Cambio detectado en tiempo real:', payload.eventType);
+                    loadProducts(); // Recarga y renderiza todo
+                }
+            )
+            .subscribe();
     </script>
 </body>
 
