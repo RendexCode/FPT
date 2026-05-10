@@ -42,6 +42,12 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        svg {
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
         body {
             background-color: var(--bg);
             color: var(--text);
@@ -121,22 +127,20 @@
 
         .search-box {
             width: 100%;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
+            background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 24px;
             padding: 0.85rem 1.2rem 0.85rem 3.5rem;
-            color: var(--text-main);
+            color: var(--text);
             font-size: 1.05rem;
             outline: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: var(--shadow);
         }
 
-        .search-box:focus,
-        .search-box:hover {
-            background: #ffffff;
-            box-shadow: 0 8px 24px rgba(32, 33, 36, 0.15);
+        .search-box:focus {
+            background: var(--card-bg);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
             border-color: var(--primary);
         }
 
@@ -390,10 +394,10 @@
 
         .result-item .title {
             font-size: 1.1rem;
-            color: var(--accent);
-            font-weight: 500;
+            color: var(--text);
+            font-weight: 600;
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             white-space: normal;
             word-break: break-word;
         }
@@ -407,21 +411,21 @@
         }
 
         .price-ves {
-            color: #000000;
-            font-weight: 700;
-            font-size: 1.1rem;
+            color: var(--text);
+            font-weight: 800;
+            font-size: 1.2rem;
         }
 
         .price-usd {
-            color: #e41e3f;
+            color: #e74c3c;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .price-divisa {
-            color: #00a400;
+            color: var(--success);
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .discount-badge {
@@ -865,15 +869,20 @@
         }
 
         .skeleton-card {
-            height: 350px;
             border-radius: var(--radius);
             background: var(--card-bg);
-            padding: 15px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1.2rem;
+            align-items: center;
         }
 
-        .skeleton-img { height: 180px; border-radius: 12px; margin-bottom: 15px; }
-        .skeleton-text { height: 15px; border-radius: 4px; margin-bottom: 10px; }
-        .skeleton-price { height: 25px; width: 60%; border-radius: 4px; }
+        .skeleton-img { width: 80px; height: 80px; border-radius: 12px; }
+        .skeleton-content { flex: 1; }
+        .skeleton-title { height: 1.1rem; width: 80%; border-radius: 4px; margin-bottom: 8px; }
+        .skeleton-price { height: 1.2rem; width: 40%; border-radius: 4px; }
 
         /* ── Theme Toggle ── */
         .theme-toggle {
@@ -1165,13 +1174,15 @@
 
         // ── Skeletons ──
         function showSkeletons() {
-            const container = document.getElementById('resultsContainer');
+            const container = document.getElementById('allProductsGrid');
+            if (!container) return;
             container.innerHTML = Array(8).fill(0).map(() => `
                 <div class="skeleton-card">
                     <div class="skeleton-img skeleton"></div>
-                    <div class="skeleton-text skeleton" style="width: 40%"></div>
-                    <div class="skeleton-text skeleton"></div>
-                    <div class="skeleton-price skeleton"></div>
+                    <div class="skeleton-content">
+                        <div class="skeleton-title skeleton"></div>
+                        <div class="skeleton-price skeleton"></div>
+                    </div>
                 </div>
             `).join('');
         }
