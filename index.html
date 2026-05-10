@@ -1635,8 +1635,6 @@
             <!-- Viewfinder -->
             <div style="flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                 <div id="photoReader" style="width: 100%; height: 100%;"></div>
-                <!-- Mira de enfoque -->
-                <div style="position: absolute; width: 250px; height: 250px; border: 2px solid rgba(255,255,255,0.3); border-radius: 20px; pointer-events: none;"></div>
             </div>
 
             <!-- Controls -->
@@ -1666,8 +1664,8 @@
     
     <style>
         /* Eliminamos las animaciones innecesarias */
-        #reader video { object-fit: cover !important; border-radius: 20px; }
-        #reader__scan_region { display: none !important; } /* Ocultar cuadros de la librería */
+        #reader video, #photoReader video { object-fit: cover !important; border-radius: 20px; }
+        #reader__scan_region, #photoReader__scan_region { display: none !important; } /* Ocultar cuadros de la librería */
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
