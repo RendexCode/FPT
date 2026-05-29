@@ -1017,7 +1017,7 @@
                     // Editar
                     const { error } = await _supabase
                         .from('productos')
-                        .update({ ...productData, actualizado_en: new Date().toISOString() })
+                        .update(productData)
                         .eq('id', editingProduct.id);
 
                     if (error) throw error;
@@ -1088,7 +1088,7 @@
                 try {
                     const { error } = await _supabase
                         .from('negocio')
-                        .update({ nombre: newName, actualizado_en: new Date().toISOString() })
+                        .update({ nombre: newName })
                         .eq('id', 1);
 
                     if (error) throw error;
@@ -1110,7 +1110,7 @@
                 try {
                     const { error } = await _supabase
                         .from('tasa')
-                        .update({ valor: rate.toString(), actualizado_en: new Date().toISOString() })
+                        .update({ valor: rate.toString() })
                         .eq('nombre', 'BCV');
 
                     if (error) throw error;
