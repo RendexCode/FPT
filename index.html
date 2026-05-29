@@ -33,6 +33,31 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+        /* Efecto marquesina premium estilo Spotify (Auto-reverse Bounce con GPU Acceleration) */
+        .scroll-title-container {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+        }
+        .scroll-title {
+            display: inline-block;
+            transform: translateX(0);
+            will-change: transform;
+        }
+        .animate-marquee {
+            animation: marquee-bounce var(--scroll-duration, 6s) ease-in-out infinite;
+        }
+        @keyframes marquee-bounce {
+            0%, 15% {
+                transform: translateX(0);
+            }
+            45%, 60% {
+                transform: translateX(var(--scroll-x, 0));
+            }
+            90%, 100% {
+                transform: translateX(0);
+            }
+        }
     </style>
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col antialiased">
@@ -555,6 +580,39 @@
         formScannerBtn.addEventListener('click', () => startCameraScanner('form'));
         closeScannerBtn.addEventListener('click', stopCameraScanner);
 
+        // --- EFECTO MARQUESINA ESTILO SPOTIFY (Ajusta la traslación de forma exacta y condicional) ---
+        function adjustScrollTitle(container) {
+            const title = container.querySelector('.scroll-title');
+            if (!title) return;
+            
+            const containerWidth = container.clientWidth;
+            const titleWidth = title.scrollWidth;
+            
+            if (titleWidth > containerWidth) {
+                const difference = titleWidth - containerWidth + 12; // 12px de margen elegante al final
+                
+                // Configurar las variables CSS dinámicas para la animación acelerada por GPU
+                title.style.setProperty('--scroll-x', `-${difference}px`);
+                
+                // Velocidad uniforme aproximada de 35px por segundo para una lectura sumamente cómoda
+                const duration = Math.max(4, difference / 35);
+                title.style.setProperty('--scroll-duration', `${duration}s`);
+                
+                // Activar la animación
+                title.classList.add('animate-marquee');
+            }
+        }
+
+        function resetScrollTitle(container) {
+            const title = container.querySelector('.scroll-title');
+            if (!title) return;
+            
+            // Remover la animación y limpiar variables
+            title.classList.remove('animate-marquee');
+            title.style.removeProperty('--scroll-x');
+            title.style.removeProperty('--scroll-duration');
+        }
+
         // --- CONEXIÓN Y DATOS SUPABASE ---
 
         // Cargar Nombre de Negocio desde Supabase
@@ -691,7 +749,7 @@
             initRealtimeSubscriptions();
         });
 
-        // --- RENDERIZADO DE CATÁLOGO ---
+        // --- RENDERIZADO DE CATÁLOGO (Integrado con marquesina inteligente de nombres) ---
         function renderCatalog() {
             productsContainer.innerHTML = '';
             
@@ -723,10 +781,12 @@
                             <!-- Foto o Inicial del Producto -->
                             ${productMediaHTML}
 
-                            <!-- Detalles y Precios del Producto -->
-                            <div class="flex-grow min-w-0 text-left">
-                                <h3 class="text-base sm:text-lg font-bold text-slate-800 tracking-tight truncate group-hover:text-rose-500 transition-colors duration-200">${product.nombre}</h3>
-                                ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
+                            <!-- Detalles y Precios del Producto (Con marquesina interactiva al hacer hover o touch) -->
+                            <div class="flex-grow min-w-0 text-left overflow-hidden">
+                                <div class="scroll-title-container" onmouseenter="adjustScrollTitle(this)" onmouseleave="resetScrollTitle(this)" ontouchstart="adjustScrollTitle(this)" ontouchend="resetScrollTitle(this)">
+                                    <h3 class="scroll-title text-base sm:text-lg font-bold text-slate-800 tracking-tight group-hover:text-rose-500 transition-colors duration-200">${product.nombre}</h3>
+                                </div>
+                                ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-1"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
                                 
                                 <!-- Precios destacados -->
                                 <div class="flex flex-wrap items-baseline gap-2 mt-1.5">
