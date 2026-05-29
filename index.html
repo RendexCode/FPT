@@ -84,7 +84,7 @@
                 <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
                     <span class="text-slate-500 font-medium hidden sm:inline">Tasa BCV:</span>
                     <span class="text-slate-500 font-medium sm:hidden">Bs.</span>
-                    <input type="number" id="exchange-rate-input" step="0.0001" class="w-16 sm:w-20 bg-transparent text-slate-800 font-bold focus:outline-none text-center" title="Tasa USD a BSF (BCV)" />
+                    <input type="number" id="exchange-rate-input" step="0.01" class="w-16 sm:w-20 bg-transparent text-slate-800 font-bold focus:outline-none text-center" title="Tasa USD a BSF (BCV)" />
                     <button id="save-rate-btn" class="text-teal-600 hover:text-teal-800 font-semibold p-0.5 rounded transition-colors" title="Guardar Tasa en Supabase">
                         <i class="fas fa-check"></i>
                     </button>
@@ -748,8 +748,8 @@
                 if (error) throw error;
 
                 if (data) {
-                    exchangeRate = parseFloat(data.valor) || 1.0;
-                    exchangeRateInput.value = exchangeRate.toString();
+                    exchangeRate = parseFloat(parseFloat(data.valor).toFixed(2)) || 1.0;
+                    exchangeRateInput.value = exchangeRate.toFixed(2);
                     renderCatalog();
                 }
             } catch (err) {
@@ -1174,14 +1174,16 @@
             const rate = parseFloat(exchangeRateInput.value);
             if (!isNaN(rate) && rate > 0) {
                 try {
+                    const formattedRate = parseFloat(rate.toFixed(2));
                     const { error } = await _supabase
                         .from('tasa')
-                        .update({ valor: rate.toString() })
+                        .update({ valor: formattedRate.toString() })
                         .eq('nombre', 'BCV');
 
                     if (error) throw error;
                     
-                    exchangeRate = rate;
+                    exchangeRate = formattedRate;
+                    exchangeRateInput.value = formattedRate.toFixed(2);
                     renderCatalog();
                     alert('Tasa de cambio BCV actualizada con éxito en Supabase.');
                 } catch (err) {
