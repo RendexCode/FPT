@@ -47,17 +47,15 @@
         <!-- BARRA SUPERIOR (Navbar) -->
         <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-3.5 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm">
             <div class="flex items-center space-x-2">
-                <span id="business-name-display" class="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                <!-- Título editable al hacer clic directo -->
+                <span id="business-name-display" class="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 bg-clip-text text-transparent cursor-pointer hover:opacity-80 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200" title="Haz clic aquí para cambiar el nombre de negocio">
                     RENDEX
                 </span>
-                <button id="edit-business-btn" class="text-slate-400 hover:text-slate-600 transition-colors text-xs p-1" title="Cambiar nombre de negocio">
-                    <i class="fas fa-pen"></i>
-                </button>
             </div>
 
             <!-- Controles a la derecha -->
             <div class="flex items-center space-x-3">
-                <!-- Pill elegante de Tasa de cambio (BCV) -->
+                <!-- Pill de Tasa de cambio (BCV) -->
                 <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
                     <span class="text-slate-500 font-medium hidden sm:inline">Tasa BCV:</span>
                     <span class="text-slate-500 font-medium sm:hidden">Bs.</span>
@@ -81,12 +79,13 @@
                     <i class="fas fa-search"></i>
                 </div>
                 <input id="search-input" type="text" placeholder="Buscar productos por nombre o código de barra..." class="w-full pl-11 pr-20 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
-                <!-- Botón de Cámara en el buscador -->
+                <!-- Botón de Cámara en el buscador (Siempre Visible) -->
                 <button id="search-scanner-btn" class="absolute right-12 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear código de barra para buscar">
                     <i class="fas fa-camera text-base"></i>
                 </button>
-                <button id="clear-search-btn" class="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors p-1 hidden">
-                    <i class="fas fa-times-circle"></i>
+                <!-- Botón X para eliminar en el buscador (Siempre Visible) -->
+                <button id="clear-search-btn" class="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Limpiar búsqueda">
+                    <i class="fas fa-times-circle text-base"></i>
                 </button>
             </div>
         </div>
@@ -221,17 +220,17 @@
         </main>
     </div>
 
-    <!-- MODAL: LECTOR DE CÁMARA (Para código de barras) -->
+    <!-- MODAL: LECTOR DE CÁMARA (Limpio, sin líneas ni recuadros molestos) -->
     <div id="scanner-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white border border-slate-100 rounded-2xl shadow-xl max-w-sm w-full p-6 flex flex-col overflow-hidden relative">
             <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-center">
-                <i class="fas fa-barcode mr-2 text-rose-500"></i> Escanear Código de Barra
+                <i class="fas fa-camera mr-2 text-rose-500"></i> Escanear Código de Barra
             </h3>
             
-            <!-- Contenedor del video del lector -->
+            <!-- Contenedor del video del lector (Se eliminó qrbox para evitar la mira y la línea láser) -->
             <div id="scanner-container" class="w-full bg-slate-100 rounded-xl overflow-hidden aspect-video border border-slate-200 shadow-inner"></div>
             
-            <p class="text-xs text-slate-400 text-center mt-3.5"><i class="fas fa-info-circle mr-1"></i>Alinea el código de barras dentro del recuadro.</p>
+            <p class="text-xs text-slate-400 text-center mt-3.5"><i class="fas fa-info-circle mr-1"></i>Alinea el código de barras frente a la cámara.</p>
             <div class="mt-6 flex justify-center">
                 <button id="close-scanner-btn" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-sm">
                     Cerrar Lector
@@ -299,7 +298,6 @@
         // Elementos DOM
         const disconnectAlert = document.getElementById('disconnect-alert');
         const businessNameDisplay = document.getElementById('business-name-display');
-        const editBusinessBtn = document.getElementById('edit-business-btn');
         const exchangeRateInput = document.getElementById('exchange-rate-input');
         const saveRateBtn = document.getElementById('save-rate-btn');
         const addProductBtn = document.getElementById('add-product-btn');
@@ -489,7 +487,7 @@
                 gainNode.connect(audioCtx.destination);
                 
                 oscillator.type = "sine";
-                oscillator.frequency.value = 1050; // Tono agudo de éxito
+                oscillator.frequency.value = 1050; 
                 gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
                 gainNode.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 0.04);
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
@@ -501,7 +499,7 @@
             }
         }
 
-        // --- MANEJO DE CÁMARA (Lector de código de barras) ---
+        // --- MANEJO DE CÁMARA (Limpio sin guía láser ni recuadros, tipo visor de fotos) ---
         function startCameraScanner(target) {
             activeScannerTarget = target;
             scannerModal.classList.remove('hidden');
@@ -509,9 +507,9 @@
             
             html5QrcodeScanner = new Html5Qrcode("scanner-container");
             
+            // Se quitó la propiedad qrbox para que la cámara no dibuje ninguna raya, mira o recuadro
             const config = { 
-                fps: 15, 
-                qrbox: { width: 260, height: 160 } 
+                fps: 15
             };
             
             html5QrcodeScanner.start(
@@ -559,7 +557,7 @@
 
         // --- CONEXIÓN Y DATOS SUPABASE ---
 
-        // Cargar Nombre de Negocio desde Supabase (Tiempo Real Multi-cliente)
+        // Cargar Nombre de Negocio desde Supabase
         async function loadBusinessName() {
             try {
                 const { data, error } = await _supabase
@@ -577,7 +575,6 @@
                 }
             } catch (err) {
                 console.error('Error al obtener el nombre del negocio de Supabase:', err);
-                // Fallback local en caso de error
                 businessNameDisplay.textContent = 'RENDEX';
                 businessNameInput.value = 'RENDEX';
             }
@@ -656,7 +653,6 @@
             }
         }
 
-        // Suscribirse a cambios en tiempo real en todas las tablas de Supabase (Sincronización multi-cliente instantánea)
         function initRealtimeSubscriptions() {
             _supabase
                 .channel('realtime-changes')
@@ -781,12 +777,6 @@
         function handleSearch() {
             clearTimeout(searchTimeout);
             const query = searchInput.value.trim();
-            
-            if (query === '') {
-                clearSearchBtn.classList.add('hidden');
-            } else {
-                clearSearchBtn.classList.remove('hidden');
-            }
 
             searchTimeout = setTimeout(() => {
                 loadInventory(query);
@@ -797,7 +787,6 @@
         
         clearSearchBtn.addEventListener('click', () => {
             searchInput.value = '';
-            clearSearchBtn.classList.add('hidden');
             loadInventory('');
             searchInput.focus();
         });
@@ -913,10 +902,12 @@
             }
         });
 
-        // --- NOMBRE DE NEGOCIO (Guardado directo en Supabase con actualización en tiempo real) ---
-        editBusinessBtn.addEventListener('click', () => {
+        // --- NOMBRE DE NEGOCIO (Al pulsar el título directamente) ---
+        businessNameDisplay.addEventListener('click', () => {
             businessModal.classList.remove('hidden');
             businessModal.classList.add('flex');
+            businessNameInput.focus();
+            businessNameInput.select();
         });
 
         cancelBusinessBtn.addEventListener('click', () => {
