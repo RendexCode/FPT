@@ -55,11 +55,11 @@
 
             <!-- Controles a la derecha -->
             <div class="flex items-center space-x-3">
-                <!-- Pill elegante de Tasa de cambio -->
+                <!-- Pill elegante de Tasa de cambio (BCV) -->
                 <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
-                    <span class="text-slate-500 font-medium hidden sm:inline">Tasa:</span>
+                    <span class="text-slate-500 font-medium hidden sm:inline">Tasa BCV:</span>
                     <span class="text-slate-500 font-medium sm:hidden">Bs.</span>
-                    <input type="number" id="exchange-rate-input" step="0.01" class="w-14 sm:w-16 bg-transparent text-slate-800 font-bold focus:outline-none text-center" title="Tasa USD a BSF" />
+                    <input type="number" id="exchange-rate-input" step="0.0001" class="w-16 sm:w-20 bg-transparent text-slate-800 font-bold focus:outline-none text-center" title="Tasa USD a BSF (BCV)" />
                     <button id="save-rate-btn" class="text-teal-600 hover:text-teal-800 font-semibold p-0.5 rounded transition-colors" title="Guardar Tasa en Supabase">
                         <i class="fas fa-check"></i>
                     </button>
@@ -291,7 +291,7 @@
             return placeholderGradients[charCode % placeholderGradients.length];
         }
 
-        // --- ENRUTADOR POR HASH ---
+        // --- ENRUTADOR POR HASH (Para soporte de botón Regresar de móvil) ---
         function handleRoute() {
             const hash = window.location.hash;
             
@@ -358,24 +358,24 @@
             }
         }
 
-        // Cargar Tasa Binance desde Supabase
+        // Cargar Tasa BCV desde Supabase
         async function loadExchangeRate() {
             try {
                 const { data, error } = await _supabase
                     .from('tasa')
                     .select('*')
-                    .eq('nombre', 'BINANCE')
+                    .eq('nombre', 'BCV')
                     .single();
 
                 if (error) throw error;
 
                 if (data) {
                     exchangeRate = parseFloat(data.valor) || 1.0;
-                    exchangeRateInput.value = exchangeRate.toFixed(2);
+                    exchangeRateInput.value = exchangeRate.toString(); // Mostrar precisión total
                     renderCatalog();
                 }
             } catch (err) {
-                console.error('Error al obtener la tasa:', err);
+                console.error('Error al obtener la tasa BCV:', err);
                 disconnectAlert.classList.remove('hidden');
             }
         }
@@ -583,8 +583,7 @@
                 precio_usd: price,
                 precio_ves: price * exchangeRate,
                 stock: stock,
-                categoria: editingProduct ? editingProduct.categoria : 'Sin Categoría',
-                unidad_medida: editingProduct ? editingProduct.unidad_medida : 'Unid.'
+                unidad_medida: 'Unid.'
             };
 
             try {
@@ -673,16 +672,16 @@
                 try {
                     const { error } = await _supabase
                         .from('tasa')
-                        .update({ valor: rate.toFixed(5), actualizado_en: new Date().toISOString() })
-                        .eq('nombre', 'BINANCE');
+                        .update({ valor: rate.toString(), actualizado_en: new Date().toISOString() })
+                        .eq('nombre', 'BCV');
 
                     if (error) throw error;
                     
                     exchangeRate = rate;
                     renderCatalog();
-                    alert('Tasa de cambio actualizada con éxito en Supabase.');
+                    alert('Tasa de cambio BCV actualizada con éxito en Supabase.');
                 } catch (err) {
-                    console.error('Error al actualizar tasa en Supabase:', err);
+                    console.error('Error al actualizar tasa BCV en Supabase:', err);
                     alert('No se pudo guardar la tasa: ' + err.message);
                 }
             } else {
