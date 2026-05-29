@@ -332,6 +332,22 @@
         </div>
     </div>
 
+    <!-- MODAL: VISOR DE IMAGEN (Lightbox Premium) -->
+    <div id="image-viewer-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden transition-all duration-300 opacity-0 cursor-pointer" onclick="closeImageViewer(event)">
+        <!-- Botón de cierre superior derecho -->
+        <button class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-2 text-2xl" onclick="closeImageViewer(event)" title="Cerrar visor">
+            <i class="fas fa-times-circle"></i>
+        </button>
+        <!-- Contenedor de la Imagen -->
+        <div class="max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl shadow-2xl border border-white/10 relative transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
+            <img id="image-viewer-img" class="w-full h-auto max-h-[85vh] object-contain select-none cursor-default" src="" alt="Vista ampliada" />
+            <!-- Título del producto en el pie de la imagen -->
+            <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-5 pt-12">
+                <h4 id="image-viewer-title" class="text-white text-base sm:text-lg font-bold tracking-tight text-center">Nombre del Producto</h4>
+            </div>
+        </div>
+    </div>
+
     <!-- SUPABASE CLIENT JS LIBRARY -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -619,6 +635,46 @@
             }
         }
 
+        // --- VISOR DE IMAGEN AMPLIADA (Lightbox) ---
+        function openProductImage(id, event) {
+            if (event) event.stopPropagation();
+            const product = fullInventory.find(p => p.id === id);
+            if (product && product.imagen) {
+                const modal = document.getElementById('image-viewer-modal');
+                const modalImg = document.getElementById('image-viewer-img');
+                const modalTitle = document.getElementById('image-viewer-title');
+                
+                modalImg.src = product.imagen;
+                modalTitle.textContent = product.nombre;
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                
+                // Forzar reflujo para activar la transición CSS de Tailwind
+                modal.offsetHeight;
+                
+                modal.classList.add('opacity-100');
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }
+        }
+
+        function closeImageViewer(event) {
+            if (event) event.stopPropagation();
+            const modal = document.getElementById('image-viewer-modal');
+            
+            modal.classList.remove('opacity-100');
+            modal.querySelector('.transform').classList.remove('scale-100');
+            modal.querySelector('.transform').classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.getElementById('image-viewer-img').src = '';
+                document.getElementById('image-viewer-title').textContent = '';
+            }, 300);
+        }
+
         searchScannerBtn.addEventListener('click', () => startCameraScanner('search'));
         formScannerBtn.addEventListener('click', () => startCameraScanner('form'));
         closeScannerBtn.addEventListener('click', stopCameraScanner);
@@ -823,7 +879,7 @@
                 const priceDivisa = parseFloat(product.precio_divisa) || 0;
                 
                 const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
-                    ? `<img src="${product.imagen}" alt="${product.nombre}" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300" />`
+                    ? `<img src="${product.imagen}" alt="${product.nombre}" onclick="openProductImage(${product.id}, event)" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none cursor-zoom-in transform hover:scale-[1.08] transition-transform duration-300" title="Hacer clic para ampliar imagen" />`
                     : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
 
                 html += `
