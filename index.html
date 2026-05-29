@@ -157,7 +157,7 @@
                         </div>
                     </div>
 
-                    <!-- Foto del Producto (Subida desde galería) -->
+                    <!-- Foto del Producto -->
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Foto del Producto</label>
                         <div class="flex items-center space-x-4">
@@ -559,12 +559,25 @@
 
         // --- CONEXIÓN Y DATOS SUPABASE ---
 
-        function initBusinessName() {
-            const storedName = localStorage.getItem('rendex_business_name');
-            if (storedName) {
-                businessNameDisplay.textContent = storedName;
-                businessNameInput.value = storedName;
-            } else {
+        // Cargar Nombre de Negocio desde Supabase (Tiempo Real Multi-cliente)
+        async function loadBusinessName() {
+            try {
+                const { data, error } = await _supabase
+                    .from('negocio')
+                    .select('*')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+
+                if (data) {
+                    document.title = `${data.nombre} - Catálogo`;
+                    businessNameDisplay.textContent = data.nombre;
+                    businessNameInput.value = data.nombre;
+                }
+            } catch (err) {
+                console.error('Error al obtener el nombre del negocio de Supabase:', err);
+                // Fallback local en caso de error
                 businessNameDisplay.textContent = 'RENDEX';
                 businessNameInput.value = 'RENDEX';
             }
@@ -603,7 +616,7 @@
             }
         }
 
-        // Búsqueda inteligente que busca por Nombre o por Código de Barra en Supabase
+        // Búsqueda inteligente
         async function loadInventory(searchQuery = '') {
             try {
                 disconnectAlert.classList.add('hidden');
@@ -615,7 +628,6 @@
                     .select('*');
 
                 if (searchQuery) {
-                    // Buscar coincidencia en Nombre o Código de Barra (ilike para búsquedas parciales rápidas)
                     queryBuilder = queryBuilder.or(`nombre.ilike.%${searchQuery}%,codigo.ilike.%${searchQuery}%`);
                 }
 
@@ -644,6 +656,7 @@
             }
         }
 
+        // Suscribirse a cambios en tiempo real en todas las tablas de Supabase (Sincronización multi-cliente instantánea)
         function initRealtimeSubscriptions() {
             _supabase
                 .channel('realtime-changes')
@@ -664,17 +677,25 @@
                         loadExchangeRate();
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'negocio' },
+                    (payload) => {
+                        console.log('Cambio detectado en negocio:', payload);
+                        loadBusinessName();
+                    }
+                )
                 .subscribe();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            initBusinessName();
+            loadBusinessName();
             loadExchangeRate();
             loadInventory();
             initRealtimeSubscriptions();
         });
 
-        // --- RENDERIZADO DE CATÁLOGO (Integrado con foto real o inicial) ---
+        // --- RENDERIZADO DE CATÁLOGO ---
         function renderCatalog() {
             productsContainer.innerHTML = '';
             
@@ -694,7 +715,6 @@
                 const price = parseFloat(product.precio_usd) || 0;
                 const priceBsf = (price * exchangeRate).toFixed(2);
                 
-                // Si tiene foto, la renderizamos. Si no, usamos las iniciales estilizadas.
                 const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
                     ? `<img src="${product.imagen}" alt="${product.nombre}" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300" />`
                     : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
@@ -815,7 +835,7 @@
             window.location.hash = '';
         });
 
-        // --- ENVÍO DE FORMULARIO (Agregar / Editar en Supabase) ---
+        // --- ENVÍO DE FORMULARIO ---
         productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -893,7 +913,7 @@
             }
         });
 
-        // --- NOMBRE DE NEGOCIO ---
+        // --- NOMBRE DE NEGOCIO (Guardado directo en Supabase con actualización en tiempo real) ---
         editBusinessBtn.addEventListener('click', () => {
             businessModal.classList.remove('hidden');
             businessModal.classList.add('flex');
@@ -904,17 +924,28 @@
             businessModal.classList.remove('flex');
         });
 
-        saveBusinessBtn.addEventListener('click', () => {
+        saveBusinessBtn.addEventListener('click', async () => {
             const newName = businessNameInput.value.trim();
             if (newName) {
-                localStorage.setItem('rendex_business_name', newName);
-                businessNameDisplay.textContent = newName;
-                businessModal.classList.add('hidden');
-                businessModal.classList.remove('flex');
+                try {
+                    const { error } = await _supabase
+                        .from('negocio')
+                        .update({ nombre: newName, actualizado_en: new Date().toISOString() })
+                        .eq('id', 1);
+
+                    if (error) throw error;
+                    
+                    businessNameDisplay.textContent = newName;
+                    businessModal.classList.add('hidden');
+                    businessModal.classList.remove('flex');
+                } catch (err) {
+                    console.error('Error al guardar nombre en Supabase:', err);
+                    alert('No se pudo guardar el nombre del negocio: ' + err.message);
+                }
             }
         });
 
-        // --- GUARDAR TASA DE CAMBIO BCV IN SUPABASE ---
+        // --- GUARDAR TASA DE CAMBIO BCV EN SUPABASE ---
         saveRateBtn.addEventListener('click', async () => {
             const rate = parseFloat(exchangeRateInput.value);
             if (!isNaN(rate) && rate > 0) {
