@@ -12,6 +12,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- HTML5 Barcode/QR Code Scanner library -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body {
             font-family: 'Outfit', sans-serif;
@@ -78,7 +80,11 @@
                 <div class="absolute left-4 text-slate-400">
                     <i class="fas fa-search"></i>
                 </div>
-                <input id="search-input" type="text" placeholder="Buscar productos por nombre..." class="w-full pl-11 pr-10 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
+                <input id="search-input" type="text" placeholder="Buscar productos por nombre o código de barra..." class="w-full pl-11 pr-20 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
+                <!-- Botón de Cámara en el buscador -->
+                <button id="search-scanner-btn" class="absolute right-12 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear código de barra para buscar">
+                    <i class="fas fa-camera text-base"></i>
+                </button>
                 <button id="clear-search-btn" class="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors p-1 hidden">
                     <i class="fas fa-times-circle"></i>
                 </button>
@@ -139,6 +145,42 @@
                         <input type="text" id="product-name" required placeholder="Ej. Cable coaxial RG6" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
                     </div>
 
+                    <!-- Código de Barra con Lector de Cámara -->
+                    <div>
+                        <label for="product-code" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Código de Barra</label>
+                        <div class="relative flex items-center">
+                            <input type="text" id="product-code" placeholder="Ej. 7591234567890 (Opcional)" class="w-full pl-4 pr-11 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                            <!-- Botón de Cámara en el Formulario -->
+                            <button type="button" id="form-scanner-btn" class="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear con cámara del móvil">
+                                <i class="fas fa-camera text-base"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Foto del Producto (Subida desde galería) -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Foto del Producto</label>
+                        <div class="flex items-center space-x-4">
+                            <!-- Preview de Imagen -->
+                            <div id="image-preview-container" class="h-20 w-20 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden flex-shrink-0 relative">
+                                <span id="image-preview-placeholder" class="text-slate-300 text-2xl"><i class="fas fa-image"></i></span>
+                                <img id="image-preview-img" class="h-full w-full object-cover hidden" />
+                                <button type="button" id="remove-image-btn" class="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200 text-xs font-bold hidden">
+                                    <i class="fas fa-trash-alt mr-1"></i> Quitar
+                                </button>
+                            </div>
+                            
+                            <!-- Trigger de Subida -->
+                            <div class="flex-grow">
+                                <input type="file" id="product-image-file" accept="image/*" class="hidden">
+                                <button type="button" id="upload-image-trigger" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-sm border border-slate-200">
+                                    <i class="fas fa-upload mr-1.5 text-slate-400"></i> Seleccionar de Galería
+                                </button>
+                                <p class="text-[10px] text-slate-400 mt-1.5">Permite cargar fotos guardadas o tomar una foto en el instante.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="product-cost" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Costo ($ USD)</label>
@@ -171,12 +213,31 @@
                             Cancelar
                         </button>
                         <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold rounded-lg hover:from-rose-600 hover:to-rose-700 transition-all duration-200 shadow-md">
-                            Guardar Producto
+                            Guardar
                         </button>
                     </div>
                 </form>
             </div>
         </main>
+    </div>
+
+    <!-- MODAL: LECTOR DE CÁMARA (Para código de barras) -->
+    <div id="scanner-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-100 rounded-2xl shadow-xl max-w-sm w-full p-6 flex flex-col overflow-hidden relative">
+            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-center">
+                <i class="fas fa-barcode mr-2 text-rose-500"></i> Escanear Código de Barra
+            </h3>
+            
+            <!-- Contenedor del video del lector -->
+            <div id="scanner-container" class="w-full bg-slate-100 rounded-xl overflow-hidden aspect-video border border-slate-200 shadow-inner"></div>
+            
+            <p class="text-xs text-slate-400 text-center mt-3.5"><i class="fas fa-info-circle mr-1"></i>Alinea el código de barras dentro del recuadro.</p>
+            <div class="mt-6 flex justify-center">
+                <button id="close-scanner-btn" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-sm">
+                    Cerrar Lector
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL: CONFIRMAR ELIMINACIÓN -->
@@ -224,12 +285,16 @@
         const _supabase = createClient(supabaseUrl, supabaseKey);
 
         // Variables de estado
-        let fullInventory = []; // Contiene los productos cargados actualmente desde la consulta
+        let fullInventory = []; 
         let exchangeRate = 1.0;
         let editingProduct = null;
         let productIdToDelete = null;
         let absoluteTotalCount = 0;
         let searchTimeout = null;
+
+        // Variables Lector de Barras
+        let html5QrcodeScanner = null;
+        let activeScannerTarget = null; // 'search' o 'form'
 
         // Elementos DOM
         const disconnectAlert = document.getElementById('disconnect-alert');
@@ -241,6 +306,7 @@
         
         // Buscador
         const searchInput = document.getElementById('search-input');
+        const searchScannerBtn = document.getElementById('search-scanner-btn');
         const clearSearchBtn = document.getElementById('clear-search-btn');
         const productsContainer = document.getElementById('products-container');
         const loadingMessage = document.getElementById('loading-message');
@@ -257,12 +323,24 @@
         
         // Formulario Inputs
         const productNameInput = document.getElementById('product-name');
+        const productCodeInput = document.getElementById('product-code');
+        const formScannerBtn = document.getElementById('form-scanner-btn');
         const productCostInput = document.getElementById('product-cost');
         const productPercentInput = document.getElementById('product-percent');
         const productPriceInput = document.getElementById('product-price');
         const productStockInput = document.getElementById('product-stock');
 
-        // Modales
+        // Foto del Producto Inputs
+        const uploadImageTrigger = document.getElementById('upload-image-trigger');
+        const productImageFile = document.getElementById('product-image-file');
+        const imagePreviewImg = document.getElementById('image-preview-img');
+        const imagePreviewPlaceholder = document.getElementById('image-preview-placeholder');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+        let productBase64Image = "";
+
+        // Modales y Lector
+        const scannerModal = document.getElementById('scanner-modal');
+        const closeScannerBtn = document.getElementById('close-scanner-btn');
         const deleteModal = document.getElementById('delete-modal');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
@@ -271,7 +349,7 @@
         const saveBusinessBtn = document.getElementById('save-business-btn');
         const cancelBusinessBtn = document.getElementById('cancel-business-btn');
 
-        // Paleta de gradientes modernos y premium para los placeholders de productos
+        // Paleta de gradientes modernos
         const placeholderGradients = [
             'from-rose-400 to-orange-500',
             'from-emerald-400 to-teal-600',
@@ -300,6 +378,7 @@
                 productForm.reset();
                 productPriceInput.value = '';
                 productStockInput.value = 0;
+                resetImagePreview();
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (hash.startsWith('#editar-')) {
                 catalogView.classList.add('hidden');
@@ -308,10 +387,8 @@
                 
                 const id = parseInt(hash.replace('#editar-', ''), 10);
                 
-                // Intentar buscar en la memoria local
                 editingProduct = fullInventory.find(p => p.id === id);
                 
-                // Si no se encuentra (por recarga directa), cargarlo de Supabase
                 if (!editingProduct) {
                     try {
                         const { data, error } = await _supabase
@@ -331,6 +408,7 @@
                 if (editingProduct) {
                     formTitle.textContent = 'Editar Producto';
                     productNameInput.value = editingProduct.nombre;
+                    productCodeInput.value = editingProduct.codigo || '';
                     productCostInput.value = editingProduct.costo_usd || 0;
                     
                     const cost = parseFloat(editingProduct.costo_usd) || 0;
@@ -340,6 +418,17 @@
                     productPercentInput.value = percent;
                     productPriceInput.value = price;
                     productStockInput.value = editingProduct.stock || 0;
+                    
+                    // Prellenar Foto
+                    if (editingProduct.imagen) {
+                        productBase64Image = editingProduct.imagen;
+                        imagePreviewImg.src = productBase64Image;
+                        imagePreviewImg.classList.remove('hidden');
+                        imagePreviewPlaceholder.classList.add('hidden');
+                        removeImageBtn.classList.remove('hidden');
+                    } else {
+                        resetImagePreview();
+                    }
                 } else {
                     window.location.hash = '';
                 }
@@ -356,9 +445,120 @@
         window.addEventListener('hashchange', handleRoute);
         window.addEventListener('load', handleRoute);
 
+        // --- MANEJO DE FOTO DESDE GALERÍA ---
+        uploadImageTrigger.addEventListener('click', () => {
+            productImageFile.click();
+        });
+
+        productImageFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    productBase64Image = evt.target.result;
+                    imagePreviewImg.src = productBase64Image;
+                    imagePreviewImg.classList.remove('hidden');
+                    imagePreviewPlaceholder.classList.add('hidden');
+                    removeImageBtn.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeImageBtn.addEventListener('click', () => {
+            resetImagePreview();
+        });
+
+        function resetImagePreview() {
+            productBase64Image = "";
+            productImageFile.value = "";
+            imagePreviewImg.src = "";
+            imagePreviewImg.classList.add('hidden');
+            imagePreviewPlaceholder.classList.remove('hidden');
+            removeImageBtn.classList.add('hidden');
+        }
+
+        // --- SINTETIZADOR DE BEEP (Web Audio API) ---
+        function playBeepSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.type = "sine";
+                oscillator.frequency.value = 1050; // Tono agudo de éxito
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 0.04);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+                
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.12);
+            } catch (e) {
+                console.error("Audio Context no disponible", e);
+            }
+        }
+
+        // --- MANEJO DE CÁMARA (Lector de código de barras) ---
+        function startCameraScanner(target) {
+            activeScannerTarget = target;
+            scannerModal.classList.remove('hidden');
+            scannerModal.classList.add('flex');
+            
+            html5QrcodeScanner = new Html5Qrcode("scanner-container");
+            
+            const config = { 
+                fps: 15, 
+                qrbox: { width: 260, height: 160 } 
+            };
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    playBeepSound();
+                    
+                    if (activeScannerTarget === 'search') {
+                        searchInput.value = decodedText;
+                        handleSearch();
+                    } else if (activeScannerTarget === 'form') {
+                        productCodeInput.value = decodedText;
+                    }
+                    
+                    stopCameraScanner();
+                },
+                () => {
+                    // Escaneo continuo silencioso
+                }
+            ).catch(err => {
+                console.error("Error al arrancar la cámara:", err);
+                alert("No se pudo tener acceso a la cámara. Concede los permisos necesarios.");
+                stopCameraScanner();
+            });
+        }
+
+        function stopCameraScanner() {
+            scannerModal.classList.add('hidden');
+            scannerModal.classList.remove('flex');
+            activeScannerTarget = null;
+            
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    html5QrcodeScanner = null;
+                }).catch(err => {
+                    console.error("Error al apagar la cámara:", err);
+                });
+            }
+        }
+
+        searchScannerBtn.addEventListener('click', () => startCameraScanner('search'));
+        formScannerBtn.addEventListener('click', () => startCameraScanner('form'));
+        closeScannerBtn.addEventListener('click', stopCameraScanner);
+
         // --- CONEXIÓN Y DATOS SUPABASE ---
 
-        // Cargar Nombre de Negocio desde LocalStorage
         function initBusinessName() {
             const storedName = localStorage.getItem('rendex_business_name');
             if (storedName) {
@@ -370,7 +570,6 @@
             }
         }
 
-        // Cargar Tasa BCV desde Supabase
         async function loadExchangeRate() {
             try {
                 const { data, error } = await _supabase
@@ -383,7 +582,7 @@
 
                 if (data) {
                     exchangeRate = parseFloat(data.valor) || 1.0;
-                    exchangeRateInput.value = exchangeRate.toString(); // Mostrar precisión total
+                    exchangeRateInput.value = exchangeRate.toString();
                     renderCatalog();
                 }
             } catch (err) {
@@ -392,7 +591,6 @@
             }
         }
 
-        // Obtener conteo absoluto total de productos
         async function fetchAbsoluteTotalCount() {
             try {
                 const { count, error } = await _supabase
@@ -405,7 +603,7 @@
             }
         }
 
-        // Cargar y buscar inventario directamente desde la base de datos de Supabase
+        // Búsqueda inteligente que busca por Nombre o por Código de Barra en Supabase
         async function loadInventory(searchQuery = '') {
             try {
                 disconnectAlert.classList.add('hidden');
@@ -417,11 +615,10 @@
                     .select('*');
 
                 if (searchQuery) {
-                    // Consulta insensible a la palabra ingresada
-                    queryBuilder = queryBuilder.ilike('nombre', `%${searchQuery}%`);
+                    // Buscar coincidencia en Nombre o Código de Barra (ilike para búsquedas parciales rápidas)
+                    queryBuilder = queryBuilder.or(`nombre.ilike.%${searchQuery}%,codigo.ilike.%${searchQuery}%`);
                 }
 
-                // Cargar hasta 150 elementos ordenados alfabéticamente para mayor velocidad
                 const { data, error } = await queryBuilder
                     .order('nombre', { ascending: true })
                     .limit(150);
@@ -432,7 +629,6 @@
                 
                 loadingMessage.classList.add('hidden');
                 
-                // Actualizar contadores
                 if (searchQuery) {
                     totalProductsCount.textContent = `Resultados encontrados: ${fullInventory.length}`;
                 } else {
@@ -448,7 +644,6 @@
             }
         }
 
-        // Suscribirse a cambios en tiempo real en Supabase
         function initRealtimeSubscriptions() {
             _supabase
                 .channel('realtime-changes')
@@ -472,7 +667,6 @@
                 .subscribe();
         }
 
-        // Inicializar aplicación
         document.addEventListener('DOMContentLoaded', () => {
             initBusinessName();
             loadExchangeRate();
@@ -480,7 +674,7 @@
             initRealtimeSubscriptions();
         });
 
-        // --- RENDERIZADO DE CATÁLOGO (Diseño de Tarjeta Premium sin opacidad global y con Footer Stats con Línea Divisora) ---
+        // --- RENDERIZADO DE CATÁLOGO (Integrado con foto real o inicial) ---
         function renderCatalog() {
             productsContainer.innerHTML = '';
             
@@ -499,20 +693,24 @@
                 const outOfStock = stockVal === 0;
                 const price = parseFloat(product.precio_usd) || 0;
                 const priceBsf = (price * exchangeRate).toFixed(2);
+                
+                // Si tiene foto, la renderizamos. Si no, usamos las iniciales estilizadas.
+                const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
+                    ? `<img src="${product.imagen}" alt="${product.nombre}" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300" />`
+                    : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
 
                 html += `
                     <div class="group bg-white border border-slate-200 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] hover:border-rose-300 transition-all duration-300 flex flex-col overflow-hidden relative">
                         
                         <!-- PARTE SUPERIOR (Cuerpo de la Tarjeta) -->
                         <div class="p-5 flex items-center space-x-4">
-                            <!-- Avatar / Inicial circular con gradiente vibrante -->
-                            <div class="h-16 w-16 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl shadow-sm flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">
-                                ${initial}
-                            </div>
+                            <!-- Foto o Inicial del Producto -->
+                            ${productMediaHTML}
 
                             <!-- Detalles y Precios del Producto -->
                             <div class="flex-grow min-w-0 text-left">
                                 <h3 class="text-base sm:text-lg font-bold text-slate-800 tracking-tight truncate group-hover:text-rose-500 transition-colors duration-200">${product.nombre}</h3>
+                                ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
                                 
                                 <!-- Precios destacados -->
                                 <div class="flex flex-wrap items-baseline gap-2 mt-1.5">
@@ -526,12 +724,12 @@
                             </div>
                         </div>
 
-                        <!-- LÍNEA DE SEPARACIÓN (Clean separator line) -->
+                        <!-- LÍNEA DE SEPARACIÓN -->
                         <div class="border-t border-slate-100"></div>
 
                         <!-- PARTE INFERIOR (Footer / Stats Bar) -->
                         <div class="bg-slate-50/50 px-5 py-3 flex items-center justify-between text-xs">
-                            <!-- Stock Status del lado izquierdo -->
+                            <!-- Stock Status -->
                             <div class="flex items-center space-x-1.5">
                                 <i class="fas fa-cubes text-slate-400"></i>
                                 ${outOfStock 
@@ -540,7 +738,7 @@
                                 }
                             </div>
 
-                            <!-- Botones de Acción (Editar y Eliminar) del lado derecho ("Stats") -->
+                            <!-- Botones de Acción (Editar y Eliminar) -->
                             <div class="flex items-center space-x-1.5">
                                 <button onclick="editProduct(${product.id})" class="flex items-center space-x-1 px-3 py-1.5 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-500 rounded-lg transition-all duration-200 border border-slate-200 hover:border-rose-200 font-bold" title="Editar Producto">
                                     <i class="fas fa-pen text-[10px]"></i>
@@ -622,16 +820,19 @@
             e.preventDefault();
 
             const name = productNameInput.value.trim();
+            const code = productCodeInput.value.trim() || null;
             const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2));
             const price = parseFloat(productPriceInput.value);
             const stock = parseInt(productStockInput.value, 10) || 0;
 
             const productData = {
                 nombre: name,
+                codigo: code,
                 costo_usd: cost,
                 precio_usd: price,
                 precio_ves: price * exchangeRate,
                 stock: stock,
+                imagen: productBase64Image || null,
                 unidad_medida: 'Unid.'
             };
 
@@ -645,7 +846,7 @@
 
                     if (error) throw error;
                 } else {
-                    // Agregar nuevo (Supabase auto-genera el ID)
+                    // Agregar nuevo
                     const { error } = await _supabase
                         .from('productos')
                         .insert([productData]);
@@ -653,7 +854,6 @@
                     if (error) throw error;
                 }
                 
-                // Regresar al catálogo
                 window.location.hash = '';
             } catch (err) {
                 console.error('Error al guardar producto en Supabase:', err);
@@ -714,7 +914,7 @@
             }
         });
 
-        // --- GUARDAR TASA DE CAMBIO BCV EN SUPABASE ---
+        // --- GUARDAR TASA DE CAMBIO BCV IN SUPABASE ---
         saveRateBtn.addEventListener('click', async () => {
             const rate = parseFloat(exchangeRateInput.value);
             if (!isNaN(rate) && rate > 0) {
