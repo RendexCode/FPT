@@ -792,6 +792,15 @@
             initRealtimeSubscriptions();
         });
 
+        // --- FORMATEADOR DE BOLÍVARES (Puntos para miles, comas para decimales) ---
+        function formatBS(value) {
+            const num = parseFloat(value);
+            if (isNaN(num)) return '0,00';
+            const parts = num.toFixed(2).split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return parts.join(',');
+        }
+
         // --- RENDERIZADO DE CATÁLOGO (Integrado con marquesina inteligente de nombres) ---
         function renderCatalog() {
             productsContainer.innerHTML = '';
@@ -833,12 +842,13 @@
                                 ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-1"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
                                 
                                 <!-- Precios destacados -->
-                                <div class="flex flex-wrap items-baseline gap-2 mt-1.5">
-                                    <span class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-none">
-                                        $${price.toFixed(2)} <span class="text-[10px] font-semibold text-slate-400 uppercase">USD</span>
+                                <div class="flex flex-wrap items-baseline gap-1.5 mt-1.5 text-slate-900">
+                                    <span class="text-xl sm:text-2xl font-extrabold leading-none">
+                                        $${price.toFixed(2)} <span class="text-[10px] font-bold text-slate-400 uppercase">USD</span>
                                     </span>
-                                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100/50">
-                                        Bs. ${priceBsf}
+                                    <span class="text-xs font-extrabold text-slate-400 px-0.5">o</span>
+                                    <span class="text-sm sm:text-base font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100/50 leading-none">
+                                        ${formatBS(priceBsf)} <span class="text-[10px] font-black uppercase">BS.</span>
                                     </span>
                                 </div>
                                 ${priceDivisa > 0 ? `
