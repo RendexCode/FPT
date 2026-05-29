@@ -205,31 +205,64 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- CONFIGURACIÓN DE PRECIOS -->
+                    <div class="bg-slate-50/50 border border-slate-200/60 rounded-2xl p-5 space-y-4 shadow-sm">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
+                            <i class="fas fa-tags mr-2 text-rose-500"></i>Configuración de Precios
+                        </h4>
+                        
+                        <!-- Modo de Cálculo -->
                         <div>
-                            <label for="product-cost" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Costo ($ USD)</label>
-                            <input type="number" id="product-cost" required step="0.01" placeholder="0.00" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100/80 rounded-xl border border-slate-200/50">
+                                <button type="button" id="mode-manual-btn" class="py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-white text-slate-800 shadow-sm border border-slate-200/30 w-full">
+                                    <i class="fas fa-keyboard mr-1.5 text-slate-400"></i>Precio Manual
+                                </button>
+                                <button type="button" id="mode-auto-btn" class="py-2 text-xs font-extrabold rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-700 w-full">
+                                    <i class="fas fa-calculator mr-1.5 text-slate-400"></i>Autocalculado
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <label for="product-percent" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Ganancia (%)</label>
-                            <input type="number" id="product-percent" required min="0" max="99" placeholder="25" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+
+                        <!-- Costo y Ganancia (Fila) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="product-cost" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Costo ($ USD)</label>
+                                <input type="number" id="product-cost" required step="0.01" placeholder="0.00" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 transition-all duration-200">
+                            </div>
+                            <div id="gain-container" class="hidden">
+                                <label for="product-percent" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Ganancia (%)</label>
+                                <input type="number" id="product-percent" min="0" max="99" placeholder="25" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 transition-all duration-200">
+                            </div>
+                        </div>
+
+                        <!-- Precios de Venta -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="product-price" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio de Venta ($ USD)</label>
+                                <div class="relative">
+                                    <input type="number" id="product-price" step="0.01" required placeholder="0.00" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
+                                    <div id="price-badge-auto" class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-teal-600 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded hidden">
+                                        Calculado
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="product-divisa-price" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio Especial Divisa ($ USD)</label>
+                                <div class="relative">
+                                    <input type="number" id="product-divisa-price" step="0.01" placeholder="0.00 (Opcional)" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
+                                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded">
+                                        Efectivo
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1.5"><i class="fas fa-info-circle mr-1"></i>Precio de descuento para pagos en divisas en efectivo.</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="product-price" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio de Venta ($ USD)</label>
-                            <div class="relative">
-                                <input type="number" id="product-price" readonly placeholder="0.00" class="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none cursor-not-allowed">
-                                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
-                                    Autocalculado
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <label for="product-stock" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Cantidad en Stock</label>
-                            <input type="number" id="product-stock" required min="0" placeholder="0" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
-                        </div>
+                    <!-- CANTIDAD EN STOCK -->
+                    <div>
+                        <label for="product-stock" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Cantidad en Stock</label>
+                        <input type="number" id="product-stock" required min="0" placeholder="0" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
                     </div>
 
                     <div class="pt-4 flex items-center justify-end space-x-3">
@@ -351,6 +384,7 @@
         const productCostInput = document.getElementById('product-cost');
         const productPercentInput = document.getElementById('product-percent');
         const productPriceInput = document.getElementById('product-price');
+        const productDivisaPriceInput = document.getElementById('product-divisa-price');
         const productStockInput = document.getElementById('product-stock');
 
         // Foto del Producto Inputs
@@ -402,6 +436,11 @@
                 productPriceInput.value = '';
                 productStockInput.value = 0;
                 resetImagePreview();
+                
+                // Modo manual predeterminado
+                setPriceMode('manual');
+                productDivisaPriceInput.value = '';
+                
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (hash.startsWith('#editar-')) {
                 catalogView.classList.add('hidden');
@@ -436,11 +475,15 @@
                     
                     const cost = parseFloat(editingProduct.costo_usd) || 0;
                     const price = parseFloat(editingProduct.precio_usd) || 0;
-                    const percent = price > 0 ? Math.round((1 - (cost / price)) * 100) : 25;
+                    const percent = price > 0 && cost > 0 ? Math.round((1 - (cost / price)) * 100) : 25;
                     
                     productPercentInput.value = percent;
                     productPriceInput.value = price;
                     productStockInput.value = editingProduct.stock || 0;
+                    productDivisaPriceInput.value = editingProduct.precio_divisa || '';
+                    
+                    // Inicializar en modo Manual por defecto
+                    setPriceMode('manual');
                     
                     // Prellenar Foto
                     if (editingProduct.imagen) {
@@ -768,6 +811,7 @@
                 const outOfStock = stockVal === 0;
                 const price = parseFloat(product.precio_usd) || 0;
                 const priceBsf = (price * exchangeRate).toFixed(2);
+                const priceDivisa = parseFloat(product.precio_divisa) || 0;
                 
                 const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
                     ? `<img src="${product.imagen}" alt="${product.nombre}" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300" />`
@@ -780,7 +824,7 @@
                         <div class="p-5 flex items-center space-x-4">
                             <!-- Foto o Inicial del Producto -->
                             ${productMediaHTML}
-
+ 
                             <!-- Detalles y Precios del Producto (Con marquesina interactiva al hacer hover o touch) -->
                             <div class="flex-grow min-w-0 text-left overflow-hidden">
                                 <div class="scroll-title-container" onmouseenter="adjustScrollTitle(this)" onmouseleave="resetScrollTitle(this)" ontouchstart="adjustScrollTitle(this)" ontouchend="resetScrollTitle(this)">
@@ -797,6 +841,12 @@
                                         Bs. ${priceBsf}
                                     </span>
                                 </div>
+                                ${priceDivisa > 0 ? `
+                                <div class="flex items-center space-x-1.5 mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200/60 rounded px-2.5 py-1 w-fit font-bold">
+                                    <i class="fas fa-wallet text-[10px]"></i>
+                                    <span>En Divisa: $${priceDivisa.toFixed(2)}</span>
+                                </div>
+                                ` : ''}
                             </div>
                         </div>
 
@@ -851,8 +901,58 @@
             searchInput.focus();
         });
 
+        // --- GESTIÓN DE PRECIO (MANUAL / AUTOCALCULADO) ---
+        let priceMode = 'manual';
+
+        function setPriceMode(mode) {
+            priceMode = mode;
+            
+            const modeManualBtn = document.getElementById('mode-manual-btn');
+            const modeAutoBtn = document.getElementById('mode-auto-btn');
+            const gainContainer = document.getElementById('gain-container');
+            const priceBadgeAuto = document.getElementById('price-badge-auto');
+            
+            if (mode === 'manual') {
+                // UI de Botones
+                modeManualBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-white text-rose-600 shadow-sm border border-slate-200/30 w-full";
+                modeAutoBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-700 w-full";
+                
+                // Ocultar campo ganancia
+                gainContainer.classList.add('hidden');
+                
+                // Desbloquear Precio de Venta
+                productPriceInput.removeAttribute('readonly');
+                productPriceInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+                productPriceInput.classList.add('bg-white', 'focus:ring-2', 'focus:ring-rose-500');
+                priceBadgeAuto.classList.add('hidden');
+                
+                // Remover validaciones
+                productPercentInput.removeAttribute('required');
+            } else {
+                // UI de Botones
+                modeAutoBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-white text-rose-600 shadow-sm border border-slate-200/30 w-full";
+                modeManualBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-700 w-full";
+                
+                // Mostrar campo ganancia
+                gainContainer.classList.remove('hidden');
+                
+                // Bloquear Precio de Venta
+                productPriceInput.setAttribute('readonly', 'true');
+                productPriceInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+                productPriceInput.classList.remove('bg-white', 'focus:ring-2', 'focus:ring-rose-500');
+                priceBadgeAuto.classList.remove('hidden');
+                
+                // Hacer requerido
+                productPercentInput.setAttribute('required', 'true');
+                
+                // Calcular precio de inmediato
+                calculatePrice();
+            }
+        }
+
         // --- CÁLCULO DINÁMICO DE PRECIO EN FORMULARIO ---
         function calculatePrice() {
+            if (priceMode !== 'auto') return;
             const cost = parseFloat(productCostInput.value);
             const percent = parseFloat(productPercentInput.value);
             
@@ -866,6 +966,12 @@
 
         productCostInput.addEventListener('input', calculatePrice);
         productPercentInput.addEventListener('input', calculatePrice);
+
+        // Inicializar listeners de botones de modo
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('mode-manual-btn').addEventListener('click', () => setPriceMode('manual'));
+            document.getElementById('mode-auto-btn').addEventListener('click', () => setPriceMode('auto'));
+        });
 
         // --- NAVEGACIÓN ---
         addProductBtn.addEventListener('click', () => {
@@ -892,6 +998,7 @@
             const code = productCodeInput.value.trim() || null;
             const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2));
             const price = parseFloat(productPriceInput.value);
+            const divisaPrice = productDivisaPriceInput.value ? parseFloat(parseFloat(productDivisaPriceInput.value).toFixed(2)) : null;
             const stock = parseInt(productStockInput.value, 10) || 0;
 
             const productData = {
@@ -900,6 +1007,7 @@
                 costo_usd: cost,
                 precio_usd: price,
                 precio_ves: price * exchangeRate,
+                precio_divisa: divisaPrice,
                 stock: stock,
                 imagen: productBase64Image || null,
                 unidad_medida: 'Unid.'
