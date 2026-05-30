@@ -1331,6 +1331,88 @@
             infiniteScrollObserver.observe(trigger);
         }
 
+        function handleRealtimeProductChange(payload) {
+            const eventType = payload.eventType;
+            const newRow = payload.new;
+            const oldRow = payload.old;
+
+            // Función auxiliar para comprobar si un producto coincide con la búsqueda activa
+            const matchesSearch = (product) => {
+                if (!currentSearchQuery) return true;
+                const query = currentSearchQuery.toLowerCase();
+                const nameMatch = product.nombre && product.nombre.toLowerCase().includes(query);
+                const codeMatch = product.codigo && product.codigo.toLowerCase().includes(query);
+                return nameMatch || codeMatch;
+            };
+
+            if (eventType === 'INSERT') {
+                if (matchesSearch(newRow)) {
+                    const exists = fullInventory.some(p => p.id === newRow.id);
+                    if (!exists) {
+                        fullInventory.push(newRow);
+                        fullInventory.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                        renderCatalog();
+                    }
+                }
+                // Incrementar total absoluto siempre
+                absoluteTotalCount++;
+                totalProductsCount.textContent = currentSearchQuery 
+                    ? `Resultados encontrados: ${fullInventory.length}`
+                    : `Total en catálogo: ${absoluteTotalCount}`;
+
+            } else if (eventType === 'UPDATE') {
+                const index = fullInventory.findIndex(p => p.id === newRow.id);
+                
+                if (matchesSearch(newRow)) {
+                    if (index !== -1) {
+                        // Actualizar existente
+                        fullInventory[index] = newRow;
+                    } else {
+                        // No estaba visible pero ahora coincide con el filtro, agregarlo
+                        fullInventory.push(newRow);
+                    }
+                    fullInventory.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    renderCatalog();
+                } else {
+                    if (index !== -1) {
+                        // Estaba visible pero ya no coincide con la búsqueda, removerlo
+                        fullInventory.splice(index, 1);
+                        renderCatalog();
+                    }
+                }
+
+                // Actualizar también el producto si está en el carrito
+                const cartIndex = cart.findIndex(item => item.id === newRow.id);
+                if (cartIndex !== -1) {
+                    const qty = cart[cartIndex].quantity;
+                    cart[cartIndex] = { ...newRow, quantity: qty };
+                    saveCart();
+                    renderCartItems();
+                }
+
+            } else if (eventType === 'DELETE') {
+                const index = fullInventory.findIndex(p => p.id === oldRow.id);
+                if (index !== -1) {
+                    fullInventory.splice(index, 1);
+                    renderCatalog();
+                }
+
+                // Decrementar total absoluto siempre
+                absoluteTotalCount = Math.max(0, absoluteTotalCount - 1);
+                totalProductsCount.textContent = currentSearchQuery 
+                    ? `Resultados encontrados: ${fullInventory.length}`
+                    : `Total en catálogo: ${absoluteTotalCount}`;
+
+                // Quitar del carrito si corresponde
+                const cartIndex = cart.findIndex(item => item.id === oldRow.id);
+                if (cartIndex !== -1) {
+                    cart.splice(cartIndex, 1);
+                    saveCart();
+                    renderCartItems();
+                }
+            }
+        }
+
         function initRealtimeSubscriptions() {
             _supabase
                 .channel('realtime-changes')
@@ -1338,16 +1420,15 @@
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'productos' },
                     (payload) => {
-                        console.log('Cambio detectado en productos:', payload);
-                        const currentQuery = searchInput.value.trim();
-                        loadInventory(currentQuery);
+                        console.log('Cambio detectado en productos (Realtime):', payload);
+                        handleRealtimeProductChange(payload);
                     }
                 )
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'tasa' },
                     (payload) => {
-                        console.log('Cambio detectado en tasa:', payload);
+                        console.log('Cambio detectado en tasa (Realtime):', payload);
                         loadExchangeRate();
                     }
                 )
@@ -1355,11 +1436,19 @@
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'negocio' },
                     (payload) => {
-                        console.log('Cambio detectado en negocio:', payload);
+                        console.log('Cambio detectado en negocio (Realtime):', payload);
                         loadBusinessName();
                     }
                 )
-                .subscribe();
+                .subscribe((status, err) => {
+                    console.log(`Estado de suscripción Realtime: ${status}`);
+                    if (status === 'SUBSCRIBED') {
+                        disconnectAlert.classList.add('hidden');
+                    } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                        console.error('Error o desconexión en Realtime:', err || status);
+                        disconnectAlert.classList.remove('hidden');
+                    }
+                });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
