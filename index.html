@@ -1080,13 +1080,28 @@
                         .eq('id', editingProduct.id);
 
                     if (error) throw error;
+
+                    // Actualización optimista local instantánea para edición
+                    const index = fullInventory.findIndex(p => p.id === editingProduct.id);
+                    if (index !== -1) {
+                        fullInventory[index] = { ...fullInventory[index], ...productData };
+                        renderCatalog();
+                    }
                 } else {
                     // Agregar nuevo
-                    const { error } = await _supabase
+                    const { data, error } = await _supabase
                         .from('productos')
-                        .insert([productData]);
+                        .insert([productData])
+                        .select();
 
                     if (error) throw error;
+
+                    // Actualización optimista local instantánea para creación (ordenada alfabéticamente)
+                    if (data && data.length > 0) {
+                        fullInventory.push(data[0]);
+                        fullInventory.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                        renderCatalog();
+                    }
                 }
                 
                 window.location.hash = '';
@@ -1118,6 +1133,10 @@
                     .eq('id', productIdToDelete);
 
                 if (error) throw error;
+
+                // Actualización local instantánea tras borrar
+                fullInventory = fullInventory.filter(p => p.id !== productIdToDelete);
+                renderCatalog();
 
                 deleteModal.classList.add('hidden');
                 deleteModal.classList.remove('flex');
