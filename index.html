@@ -268,34 +268,45 @@
                         </div>
 
                         <!-- Costo y Ganancia (Fila) -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label for="product-cost" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Costo ($ USD)</label>
                                 <input type="number" id="product-cost" required step="0.01" placeholder="0.00" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 transition-all duration-200">
                             </div>
-                            <div id="gain-container" class="hidden">
+                            <div id="gain-container">
                                 <label for="product-percent" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Ganancia (%)</label>
                                 <input type="number" id="product-percent" min="0" max="99" placeholder="25" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 transition-all duration-200">
                             </div>
                         </div>
 
                         <!-- Precios de Venta -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-4">
+                            <!-- Fila Precio de Venta -->
                             <div>
-                                <label for="product-price" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio de Venta ($ USD)</label>
-                                <div class="relative">
-                                    <input type="number" id="product-price" step="0.01" required placeholder="0.00" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
-                                    <div id="price-badge-auto" class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-teal-600 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded hidden">
-                                        Calculado
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio de Venta ($ USD)</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <input type="number" id="product-price-manual" step="0.01" placeholder="Manual" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
+                                        <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Manual</span>
+                                    </div>
+                                    <div>
+                                        <input type="number" id="product-price-auto" step="0.01" readonly placeholder="Calculado" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200">
+                                        <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Autocalculado</span>
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Fila Precio Especial Divisa -->
                             <div>
-                                <label for="product-divisa-price" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio Especial Divisa ($ USD)</label>
-                                <div class="relative">
-                                    <input type="number" id="product-divisa-price" step="0.01" placeholder="0.00 (Opcional)" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
-                                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded">
-                                        Efectivo
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Precio Especial Divisa ($ USD)</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <input type="number" id="product-divisa-price-manual" step="0.01" placeholder="Manual (Opcional)" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
+                                        <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Manual (Efectivo)</span>
+                                    </div>
+                                    <div>
+                                        <input type="number" id="product-divisa-price-auto" step="0.01" readonly placeholder="Calculado" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200">
+                                        <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Autocalculado (Binance)</span>
                                     </div>
                                 </div>
                                 <p class="text-[10px] text-slate-400 mt-1.5"><i class="fas fa-info-circle mr-1"></i>Precio de descuento para pagos en divisas en efectivo.</p>
@@ -536,8 +547,10 @@
         const formScannerBtn = document.getElementById('form-scanner-btn');
         const productCostInput = document.getElementById('product-cost');
         const productPercentInput = document.getElementById('product-percent');
-        const productPriceInput = document.getElementById('product-price');
-        const productDivisaPriceInput = document.getElementById('product-divisa-price');
+        const productPriceManualInput = document.getElementById('product-price-manual');
+        const productPriceAutoInput = document.getElementById('product-price-auto');
+        const productDivisaPriceManualInput = document.getElementById('product-divisa-price-manual');
+        const productDivisaPriceAutoInput = document.getElementById('product-divisa-price-auto');
         const productStockInput = document.getElementById('product-stock');
 
         // Foto del Producto Inputs
@@ -603,13 +616,15 @@
                 editingProduct = null;
                 formTitle.textContent = 'Agregar Nuevo Producto';
                 productForm.reset();
-                productPriceInput.value = '';
+                productPriceManualInput.value = '';
+                productPriceAutoInput.value = '';
+                productDivisaPriceManualInput.value = '';
+                productDivisaPriceAutoInput.value = '';
                 productStockInput.value = 0;
                 resetImagePreview();
                 
                 // Modo manual predeterminado
                 setPriceMode('manual');
-                productDivisaPriceInput.value = '';
                 
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (hash.startsWith('#editar-')) {
@@ -647,12 +662,16 @@
                     const percent = price > 0 && cost > 0 ? Math.round((1 - (cost / price)) * 100) : 25;
                     
                     productPercentInput.value = percent;
-                    productPriceInput.value = price;
+                    productPriceManualInput.value = price;
+                    productDivisaPriceManualInput.value = editingProduct.precio_divisa || '';
                     productStockInput.value = editingProduct.stock || 0;
-                    productDivisaPriceInput.value = editingProduct.precio_divisa || '';
                     
-                    // Inicializar en modo Manual por defecto
-                    setPriceMode('manual');
+                    // Cargar modo de precio guardado
+                    const savedMode = editingProduct.modo_precio || 'manual';
+                    setPriceMode(savedMode);
+                    
+                    // Forzar cálculo de campos automáticos al cargar
+                    calculatePrice();
                     
                     // Prellenar Foto
                     if (editingProduct.imagen) {
@@ -1690,41 +1709,45 @@
             
             const modeManualBtn = document.getElementById('mode-manual-btn');
             const modeAutoBtn = document.getElementById('mode-auto-btn');
-            const gainContainer = document.getElementById('gain-container');
-            const priceBadgeAuto = document.getElementById('price-badge-auto');
             
             if (mode === 'manual') {
                 // UI de Botones
-                modeManualBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-white text-rose-600 shadow-sm border border-slate-200/30 w-full";
+                modeManualBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-sm w-full";
                 modeAutoBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-700 w-full";
                 
-                // Ocultar campo ganancia
-                gainContainer.classList.add('hidden');
+                // Destacar y hacer editables los campos manuales
+                productPriceManualInput.className = "w-full px-4 py-2.5 bg-white border border-rose-300 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200 ring-2 ring-rose-500/10";
+                productPriceManualInput.removeAttribute('readonly');
                 
-                // Desbloquear Precio de Venta
-                productPriceInput.removeAttribute('readonly');
-                productPriceInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
-                productPriceInput.classList.add('bg-white', 'focus:ring-2', 'focus:ring-rose-500');
-                priceBadgeAuto.classList.add('hidden');
+                productDivisaPriceManualInput.className = "w-full px-4 py-2.5 bg-white border border-rose-300 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200 ring-2 ring-rose-500/10";
+                productDivisaPriceManualInput.removeAttribute('readonly');
                 
-                // Remover validaciones
+                // Normalizar campos automáticos
+                productPriceAutoInput.className = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200";
+                productDivisaPriceAutoInput.className = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200";
+                
+                // Remover validaciones de porcentaje
                 productPercentInput.removeAttribute('required');
+                productPriceManualInput.setAttribute('required', 'true');
             } else {
                 // UI de Botones
-                modeAutoBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-white text-rose-600 shadow-sm border border-slate-200/30 w-full";
+                modeAutoBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-sm w-full";
                 modeManualBtn.className = "py-2 text-xs font-extrabold rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-700 w-full";
                 
-                // Mostrar campo ganancia
-                gainContainer.classList.remove('hidden');
+                // Normalizar y hacer NO editables los campos manuales en modo autocalculado
+                productPriceManualInput.className = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200";
+                productPriceManualInput.setAttribute('readonly', 'true');
                 
-                // Bloquear Precio de Venta
-                productPriceInput.setAttribute('readonly', 'true');
-                productPriceInput.classList.add('bg-slate-100', 'cursor-not-allowed');
-                productPriceInput.classList.remove('bg-white', 'focus:ring-2', 'focus:ring-rose-500');
-                priceBadgeAuto.classList.remove('hidden');
+                productDivisaPriceManualInput.className = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200";
+                productDivisaPriceManualInput.setAttribute('readonly', 'true');
                 
-                // Hacer requerido
+                // Destacar campos automáticos
+                productPriceAutoInput.className = "w-full px-4 py-2.5 bg-teal-50/30 border border-teal-300 rounded-lg text-teal-800 font-bold cursor-not-allowed focus:outline-none transition-all duration-200 ring-2 ring-teal-500/10";
+                productDivisaPriceAutoInput.className = "w-full px-4 py-2.5 bg-teal-50/30 border border-teal-300 rounded-lg text-teal-800 font-bold cursor-not-allowed focus:outline-none transition-all duration-200 ring-2 ring-teal-500/10";
+                
+                // Hacer requerido el porcentaje
                 productPercentInput.setAttribute('required', 'true');
+                productPriceManualInput.removeAttribute('required');
                 
                 // Calcular precio de inmediato
                 calculatePrice();
@@ -1733,26 +1756,26 @@
 
         // --- CÁLCULO DINÁMICO DE PRECIO EN FORMULARIO ---
         function calculatePrice() {
-            if (priceMode !== 'auto') return;
+            // El cálculo dinámico automático siempre se ejecuta de fondo para poder comparar ambos precios en tiempo real
             const cost = parseFloat(productCostInput.value);
             const percent = parseFloat(productPercentInput.value);
             
             if (!isNaN(cost) && !isNaN(percent) && percent < 100 && percent >= 0) {
                 const price = cost / (1 - percent / 100);
-                productPriceInput.value = price.toFixed(2);
+                productPriceAutoInput.value = price.toFixed(2);
                 
                 // Calcular el precio especial divisa automáticamente
                 // Fórmula: precio_divisa = (precio_usd * tasa_bcv) / tasa_binance
                 if (exchangeRate > 0 && binanceRate > 0) {
                     const priceBs = price * exchangeRate;
                     const divisaPrice = priceBs / binanceRate;
-                    productDivisaPriceInput.value = divisaPrice.toFixed(2);
+                    productDivisaPriceAutoInput.value = divisaPrice.toFixed(2);
                 } else {
-                    productDivisaPriceInput.value = '';
+                    productDivisaPriceAutoInput.value = '';
                 }
             } else {
-                productPriceInput.value = '';
-                productDivisaPriceInput.value = '';
+                productPriceAutoInput.value = '';
+                productDivisaPriceAutoInput.value = '';
             }
         }
 
@@ -1788,10 +1811,27 @@
 
             const name = productNameInput.value.trim();
             const code = productCodeInput.value.trim() || null;
-            const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2));
-            const price = parseFloat(productPriceInput.value);
-            const divisaPrice = productDivisaPriceInput.value ? parseFloat(parseFloat(productDivisaPriceInput.value).toFixed(2)) : null;
+            const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2)) || 0;
+            const percent = parseFloat(productPercentInput.value) || 0;
             const stock = parseInt(productStockInput.value, 10) || 0;
+
+            // Precios según el modo seleccionado (manual o auto)
+            let price = 0;
+            let divisaPrice = null;
+
+            const priceManual = parseFloat(productPriceManualInput.value) || 0;
+            const divisaPriceManual = productDivisaPriceManualInput.value ? parseFloat(parseFloat(productDivisaPriceManualInput.value).toFixed(2)) : null;
+
+            const priceAuto = parseFloat(productPriceAutoInput.value) || 0;
+            const divisaPriceAuto = productDivisaPriceAutoInput.value ? parseFloat(parseFloat(productDivisaPriceAutoInput.value).toFixed(2)) : null;
+
+            if (priceMode === 'auto') {
+                price = priceAuto;
+                divisaPrice = divisaPriceAuto;
+            } else {
+                price = priceManual;
+                divisaPrice = divisaPriceManual;
+            }
 
             const productData = {
                 nombre: name,
@@ -1801,7 +1841,8 @@
                 precio_ves: price * exchangeRate,
                 precio_divisa: divisaPrice,
                 stock: stock,
-                imagen: productBase64Image || null
+                imagen: productBase64Image || null,
+                modo_precio: priceMode // Persistir el modo seleccionado ('manual' o 'auto')
             };
 
             try {
