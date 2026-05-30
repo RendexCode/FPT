@@ -420,26 +420,31 @@
     <div id="cart-view" class="hidden flex-col h-screen max-h-screen overflow-hidden">
         <!-- BARRA SUPERIOR DE CARRITO -->
         <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm flex-shrink-0">
-            <button onclick="backToCatalogFromCart()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors">
-                <i class="fas fa-arrow-left text-lg"></i>
-                <span>Volver</span>
-            </button>
             <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
                 Mi Carrito
             </h1>
-            <div></div> <!-- Espaciador para centrado visual -->
+            
+            <!-- Switch Premium para cambiar de BCV a DIVISA -->
+            <div class="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200 shadow-sm flex-shrink-0">
+                <button onclick="setCartPriceMode('bcv')" id="cart-mode-bcv" class="px-3.5 py-1.5 text-xs font-black rounded-full transition-all duration-300 shadow-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white">
+                    BCV
+                </button>
+                <button onclick="setCartPriceMode('divisa')" id="cart-mode-divisa" class="px-3.5 py-1.5 text-xs font-extrabold rounded-full transition-all duration-300 text-slate-500 hover:text-slate-800">
+                    DIVISA
+                </button>
+            </div>
         </nav>
 
         <!-- CONTENIDO DEL CARRITO -->
         <main class="flex-grow max-w-xl w-full mx-auto px-4 py-6 flex flex-col min-h-0 overflow-hidden space-y-6">
             <div class="flex-shrink-0 space-y-6">
                 <!-- Totales Destacados -->
-                <div class="grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6">
-                    <div class="text-left">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total en Dólares</span>
+                <div id="cart-totals-container" class="grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6">
+                    <div id="cart-total-usd-col" class="text-left">
+                        <span id="cart-total-usd-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total en Dólares (BCV)</span>
                         <span id="cart-total-usd" class="text-2xl sm:text-3xl font-black text-slate-900 leading-none">$0.00 <span class="text-xs font-bold text-slate-400">USD</span></span>
                     </div>
-                    <div class="text-right border-l border-slate-100 pl-4">
+                    <div id="cart-total-bs-col" class="text-right border-l border-slate-100 pl-4">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total en Bolívares</span>
                         <span id="cart-total-bs" class="text-2xl sm:text-3xl font-black text-rose-600 leading-none">0,00 <span class="text-xs font-bold text-rose-400">BS.</span></span>
                     </div>
@@ -452,7 +457,7 @@
                         <span>Vaciar Carrito</span>
                     </button>
                     <button onclick="backToCatalogFromCart()" class="py-2.5 px-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-xl font-bold text-sm hover:from-rose-600 hover:to-rose-700 transition-all shadow-md hover:shadow-rose-100 flex items-center justify-center" title="Volver al Catálogo">
-                        <span>Aceptar</span>
+                        <span>Catálogo</span>
                     </button>
                 </div>
 
@@ -485,6 +490,7 @@
         let editingProduct = null;
         let productIdToDelete = null;
         let absoluteTotalCount = 0;
+        let cartPriceMode = 'bcv'; // 'bcv' o 'divisa'
         let searchTimeout = null;
 
         // Variables de paginación y scroll infinito
@@ -1017,6 +1023,9 @@
             const container = document.getElementById('cart-items-container');
             const totalUsdSpan = document.getElementById('cart-total-usd');
             const totalBsSpan = document.getElementById('cart-total-bs');
+            const totalsContainer = document.getElementById('cart-totals-container');
+            const totalBsCol = document.getElementById('cart-total-bs-col');
+            const totalUsdLabel = document.getElementById('cart-total-usd-label');
             
             if (!container) return;
             
@@ -1037,24 +1046,51 @@
                 if (window.location.hash === '#carrito') {
                     setTimeout(() => {
                         backToCatalogFromCart();
-                    }, 400); // Retraso suave de 400ms para percibir que quedó vacío
+                    }, 400);
                 }
                 return;
+            }
+
+            // Adaptar interfaz de Totales según el modo (BCV o DIVISA)
+            if (cartPriceMode === 'divisa') {
+                if (totalsContainer) {
+                    totalsContainer.className = "grid grid-cols-1 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6";
+                }
+                if (totalBsCol) totalBsCol.classList.add('hidden');
+                if (totalUsdLabel) totalUsdLabel.textContent = "Total en Divisas";
+            } else {
+                if (totalsContainer) {
+                    totalsContainer.className = "grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6";
+                }
+                if (totalBsCol) {
+                    totalBsCol.classList.remove('hidden');
+                    totalBsCol.className = "text-right border-l border-slate-100 pl-4";
+                }
+                if (totalUsdLabel) totalUsdLabel.textContent = "Total en Dólares (BCV)";
             }
 
             let html = '';
             let totalUsd = 0;
 
             cart.forEach(item => {
-                const itemTotalUsd = item.precio_usd * item.quantity;
+                // Si es modo divisa, utilizar precio_divisa; si no existe o es bcv, precio_usd
+                const itemPrice = (cartPriceMode === 'divisa' && item.precio_divisa) 
+                    ? parseFloat(item.precio_divisa) 
+                    : parseFloat(item.precio_usd);
+                
+                const itemTotalUsd = itemPrice * item.quantity;
                 totalUsd += itemTotalUsd;
                 
+                const priceInfo = cartPriceMode === 'divisa'
+                    ? `$${itemPrice.toFixed(2)} USD c/u`
+                    : `$${itemPrice.toFixed(2)} USD / ${formatBS((itemPrice * exchangeRate).toFixed(2))} BS. c/u`;
+
                 html += `
                 <div class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300">
                     <div class="flex-grow min-w-0 pr-3">
                         <h4 class="font-bold text-slate-800 text-sm truncate" title="${item.nombre}">${item.nombre}</h4>
                         <p class="text-[11px] text-slate-400 mt-0.5">
-                            $${item.precio_usd.toFixed(2)} USD / ${formatBS((item.precio_usd * exchangeRate).toFixed(2))} BS. c/u
+                            ${priceInfo}
                         </p>
                     </div>
                     
@@ -1081,9 +1117,32 @@
 
             container.innerHTML = html;
             
-            const totalBsf = (totalUsd * exchangeRate).toFixed(2);
             totalUsdSpan.innerHTML = `$${totalUsd.toFixed(2)} <span class="text-[10px] font-bold text-slate-400">USD</span>`;
-            totalBsSpan.innerHTML = `${formatBS(totalBsf)} <span class="text-[10px] font-bold text-rose-400">BS.</span>`;
+            
+            if (cartPriceMode === 'bcv') {
+                const totalBsf = (totalUsd * exchangeRate).toFixed(2);
+                totalBsSpan.innerHTML = `${formatBS(totalBsf)} <span class="text-[10px] font-bold text-rose-400">BS.</span>`;
+            }
+        }
+
+        // Switch de modo de precio en el carrito
+        function setCartPriceMode(mode) {
+            cartPriceMode = mode;
+            
+            const bcvBtn = document.getElementById('cart-mode-bcv');
+            const divisaBtn = document.getElementById('cart-mode-divisa');
+            
+            if (!bcvBtn || !divisaBtn) return;
+            
+            if (mode === 'bcv') {
+                bcvBtn.className = "px-3.5 py-1.5 text-xs font-black rounded-full transition-all duration-300 shadow-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white";
+                divisaBtn.className = "px-3.5 py-1.5 text-xs font-extrabold rounded-full transition-all duration-300 text-slate-500 hover:text-slate-800";
+            } else {
+                bcvBtn.className = "px-3.5 py-1.5 text-xs font-extrabold rounded-full transition-all duration-300 text-slate-500 hover:text-slate-800";
+                divisaBtn.className = "px-3.5 py-1.5 text-xs font-black rounded-full transition-all duration-300 shadow-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white";
+            }
+            
+            renderCartItems();
         }
 
         // Navegar a la Vista del Carrito (Página Propia)
