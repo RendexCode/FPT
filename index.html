@@ -127,18 +127,26 @@
 
         <!-- SEGUNDA BARRA: BUSCADOR (Posicionado de forma dinámica mediante ResizeObserver) -->
         <div id="search-bar-container" class="bg-white border-b border-slate-100 shadow-sm sticky top-[76px] z-30 px-4 py-3 sm:px-8">
-            <div class="max-w-3xl mx-auto relative flex items-center">
-                <div class="absolute left-4 text-slate-400">
-                    <i class="fas fa-search"></i>
+            <div class="max-w-3xl mx-auto flex items-center space-x-3">
+                <div class="relative flex-grow flex items-center">
+                    <div class="absolute left-4 text-slate-400 pointer-events-none">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <input id="search-input" type="text" placeholder="Buscar productos por nombre o código de barra..." class="w-full pl-11 pr-20 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
+                    <!-- Botón de Cámara en el buscador (Siempre Visible) -->
+                    <button id="search-scanner-btn" class="absolute right-12 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear código de barra para buscar">
+                        <i class="fas fa-camera text-base"></i>
+                    </button>
+                    <!-- Botón X para eliminar en el buscador (Siempre Visible) -->
+                    <button id="clear-search-btn" class="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Limpiar búsqueda">
+                        <i class="fas fa-times-circle text-base"></i>
+                    </button>
                 </div>
-                <input id="search-input" type="text" placeholder="Buscar productos por nombre o código de barra..." class="w-full pl-11 pr-20 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
-                <!-- Botón de Cámara en el buscador (Siempre Visible) -->
-                <button id="search-scanner-btn" class="absolute right-12 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear código de barra para buscar">
-                    <i class="fas fa-camera text-base"></i>
-                </button>
-                <!-- Botón X para eliminar en el buscador (Siempre Visible) -->
-                <button id="clear-search-btn" class="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Limpiar búsqueda">
-                    <i class="fas fa-times-circle text-base"></i>
+                
+                <!-- BOTÓN DEL CARRITO EN LA BARRA DE BÚSQUEDA (Se oculta automáticamente al cambiar de página) -->
+                <button id="floating-cart-btn" class="flex-shrink-0 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95 transition-all duration-300 relative hidden" onclick="navigateToCart()" title="Ver carrito">
+                    <i class="fas fa-shopping-cart text-base sm:text-lg"></i>
+                    <span id="floating-cart-badge" class="absolute -top-1 -right-1 bg-teal-500 text-white text-[9px] sm:text-[10px] font-black h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">0</span>
                 </button>
             </div>
         </div>
@@ -406,11 +414,7 @@
         </div>
     </div>
 
-    <!-- BOTÓN FLOTANTE DEL CARRITO -->
-    <button id="floating-cart-btn" class="fixed bottom-6 right-6 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-14 w-14 rounded-full flex items-center justify-center shadow-lg hover:shadow-rose-300 hover:scale-105 active:scale-95 transition-all duration-300 z-40 hidden" onclick="navigateToCart()" title="Ver carrito">
-        <i class="fas fa-shopping-cart text-xl"></i>
-        <span id="floating-cart-badge" class="absolute -top-1 -right-1 bg-teal-500 text-white text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">0</span>
-    </button>
+    <!-- El botón flotante de carrito se reubicó al lado derecho del buscador en la barra superior de catálogo -->
 
     <!-- VISTA CARRITO DE COMPRAS (Página Propia) -->
     <div id="cart-view" class="hidden flex-col flex-grow">
@@ -976,18 +980,12 @@
             }
         }
 
-        // Mostrar / Ocultar el botón flotante del carrito
+        // Mostrar / Ocultar el botón flotante del carrito en la barra de búsqueda
         function updateCartFloatingButton() {
             const floatingBtn = document.getElementById('floating-cart-btn');
             const floatingBadge = document.getElementById('floating-cart-badge');
             
             if (!floatingBtn) return;
-            
-            // Ocultar de forma estricta (usando display none) si estamos en la vista de carrito o en la de eliminar
-            if (window.location.hash === '#carrito' || window.location.hash.startsWith('#eliminar-')) {
-                floatingBtn.style.setProperty('display', 'none', 'important');
-                return;
-            }
             
             const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
             
