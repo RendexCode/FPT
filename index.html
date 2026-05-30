@@ -370,13 +370,9 @@
 
     <!-- MODAL: VISOR DE IMAGEN (Lightbox Premium - Ajustado Completo) -->
     <div id="image-viewer-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden transition-all duration-300 opacity-0 cursor-pointer" onclick="closeImageViewer(event)">
-        <!-- Botón de cierre superior derecho -->
-        <button class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-2 text-2xl" onclick="closeImageViewer(event)" title="Cerrar visor">
-            <i class="fas fa-times-circle"></i>
-        </button>
         <!-- Contenedor de la Imagen (Ajustado al ancho y visible al completo) -->
-        <div class="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl relative transform scale-95 transition-all duration-300 flex items-center justify-center" onclick="event.stopPropagation()">
-            <img id="image-viewer-img" class="max-w-full max-h-[80vh] w-auto h-auto object-contain select-none cursor-default rounded-2xl" src="" alt="Vista ampliada" />
+        <div class="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl relative transform scale-95 transition-all duration-300 flex items-center justify-center">
+            <img id="image-viewer-img" class="max-w-full max-h-[80vh] w-auto h-auto object-contain select-none cursor-pointer rounded-2xl" src="" alt="Vista ampliada" />
         </div>
     </div>
 
