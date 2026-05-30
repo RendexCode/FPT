@@ -486,7 +486,8 @@
 
         // Variables de estado
         let fullInventory = []; 
-        let exchangeRate = 1.0;
+        let exchangeRate = 1.0; // Tasa BCV
+        let binanceRate = 1.0;  // Tasa Binance
         let editingProduct = null;
         let productIdToDelete = null;
         let absoluteTotalCount = 0;
@@ -1272,19 +1273,31 @@
             try {
                 const { data, error } = await _supabase
                     .from('tasa')
-                    .select('*')
-                    .eq('nombre', 'BCV')
-                    .single();
+                    .select('*');
 
                 if (error) throw error;
 
                 if (data) {
-                    exchangeRate = parseFloat(parseFloat(data.valor).toFixed(2)) || 1.0;
-                    exchangeRateInput.value = exchangeRate.toFixed(2);
+                    const bcvData = data.find(t => t.nombre === 'BCV');
+                    const binanceData = data.find(t => t.nombre === 'BINANCE');
+
+                    if (bcvData) {
+                        exchangeRate = parseFloat(parseFloat(bcvData.valor).toFixed(2)) || 1.0;
+                        exchangeRateInput.value = exchangeRate.toFixed(2);
+                    }
+                    if (binanceData) {
+                        binanceRate = parseFloat(parseFloat(binanceData.valor).toFixed(5)) || 1.0;
+                    }
+                    
                     renderCatalog();
+                    
+                    // Recalcular precios si el formulario está abierto y en modo automático
+                    if (priceMode === 'auto') {
+                        calculatePrice();
+                    }
                 }
             } catch (err) {
-                console.error('Error al obtener la tasa BCV:', err);
+                console.error('Error al obtener las tasas de cambio de Supabase:', err);
                 disconnectAlert.classList.remove('hidden');
             }
         }
@@ -1727,8 +1740,19 @@
             if (!isNaN(cost) && !isNaN(percent) && percent < 100 && percent >= 0) {
                 const price = cost / (1 - percent / 100);
                 productPriceInput.value = price.toFixed(2);
+                
+                // Calcular el precio especial divisa automáticamente
+                // Fórmula: precio_divisa = (precio_usd * tasa_bcv) / tasa_binance
+                if (exchangeRate > 0 && binanceRate > 0) {
+                    const priceBs = price * exchangeRate;
+                    const divisaPrice = priceBs / binanceRate;
+                    productDivisaPriceInput.value = divisaPrice.toFixed(2);
+                } else {
+                    productDivisaPriceInput.value = '';
+                }
             } else {
                 productPriceInput.value = '';
+                productDivisaPriceInput.value = '';
             }
         }
 
