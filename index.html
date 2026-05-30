@@ -904,26 +904,26 @@
             
             if (!floatingBtn) return;
             
-            // Ocultar si estamos en la vista de carrito
+            // Ocultar de forma estricta (usando display none) si estamos en la vista de carrito
             if (window.location.hash === '#carrito') {
-                floatingBtn.classList.add('hidden');
+                floatingBtn.style.setProperty('display', 'none', 'important');
                 return;
             }
             
             const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
             
             if (totalItems > 0) {
-                floatingBtn.classList.remove('hidden');
+                floatingBtn.style.setProperty('display', 'flex', 'important');
                 floatingBadge.textContent = totalItems;
             } else {
-                floatingBtn.classList.add('hidden');
+                floatingBtn.style.setProperty('display', 'none', 'important');
             }
         }
 
         // Animación micro-interactiva del botón flotante al agregar item
         function animateFloatingCartButton() {
             const floatingBtn = document.getElementById('floating-cart-btn');
-            if (floatingBtn && !floatingBtn.classList.contains('hidden')) {
+            if (floatingBtn && floatingBtn.style.display === 'flex') {
                 floatingBtn.classList.remove('hover:scale-105');
                 floatingBtn.classList.add('scale-110', 'rotate-6');
                 setTimeout(() => {
@@ -953,6 +953,13 @@
                 `;
                 totalUsdSpan.innerHTML = `$0.00 <span class="text-xs font-bold text-slate-400">USD</span>`;
                 totalBsSpan.innerHTML = `0,00 <span class="text-xs font-bold text-rose-400">BS.</span>`;
+                
+                // Si está vacío y seguimos en la URL del carrito, redirigir automáticamente al catálogo
+                if (window.location.hash === '#carrito') {
+                    setTimeout(() => {
+                        backToCatalogFromCart();
+                    }, 400); // Retraso suave de 400ms para percibir que quedó vacío
+                }
                 return;
             }
 
