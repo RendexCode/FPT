@@ -137,6 +137,14 @@
                 <!-- Se rellena dinámicamente -->
             </div>
 
+            <!-- Trigger y Spinner de Scroll Infinito -->
+            <div id="infinite-scroll-trigger" class="h-20 w-full flex items-center justify-center mt-6">
+                <div id="infinite-scroll-spinner" class="hidden flex items-center space-x-2 text-slate-500 font-medium text-sm">
+                    <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-rose-500"></div>
+                    <span>Cargando más productos...</span>
+                </div>
+            </div>
+
             <!-- Loading Spinner -->
             <div id="loading-message" class="flex flex-col justify-center items-center py-24">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
@@ -367,6 +375,14 @@
         let productIdToDelete = null;
         let absoluteTotalCount = 0;
         let searchTimeout = null;
+
+        // Variables de paginación y scroll infinito
+        let currentPage = 0;
+        const pageSize = 50;
+        let isLoadingMore = false;
+        let hasMoreProducts = true;
+        let currentSearchQuery = '';
+        let infiniteScrollObserver = null;
 
         // Variables Lector de Barras
         let html5QrcodeScanner = null;
@@ -786,32 +802,63 @@
             }
         }
 
-        // Búsqueda inteligente
-        async function loadInventory(searchQuery = '') {
+        // Búsqueda inteligente con paginación y scroll infinito
+        async function loadInventory(searchQuery = '', append = false) {
+            if (isLoadingMore && append) return;
+            
             try {
+                isLoadingMore = true;
                 disconnectAlert.classList.add('hidden');
-                loadingMessage.classList.remove('hidden');
-                noResultsMessage.classList.add('hidden');
+                
+                // Si no estamos anexando, reiniciar paginación
+                if (!append) {
+                    currentPage = 0;
+                    hasMoreProducts = true;
+                    fullInventory = [];
+                    productsContainer.innerHTML = '';
+                    loadingMessage.classList.remove('hidden');
+                    noResultsMessage.classList.add('hidden');
+                    currentSearchQuery = searchQuery;
+                } else {
+                    // Mostrar spinner de carga al final del scroll
+                    document.getElementById('infinite-scroll-spinner').classList.remove('hidden');
+                }
+
+                const from = currentPage * pageSize;
+                const to = from + pageSize - 1;
 
                 let queryBuilder = _supabase
                     .from('productos')
                     .select('*');
 
-                if (searchQuery) {
-                    queryBuilder = queryBuilder.or(`nombre.ilike.%${searchQuery}%,codigo.ilike.%${searchQuery}%`);
+                if (currentSearchQuery) {
+                    queryBuilder = queryBuilder.or(`nombre.ilike.%${currentSearchQuery}%,codigo.ilike.%${currentSearchQuery}%`);
                 }
 
                 const { data, error } = await queryBuilder
                     .order('nombre', { ascending: true })
-                    .limit(150);
+                    .range(from, to);
 
                 if (error) throw error;
 
-                fullInventory = data || [];
+                const newProducts = data || [];
                 
-                loadingMessage.classList.add('hidden');
-                
-                if (searchQuery) {
+                // Si la cantidad cargada es menor que el tamaño de página, significa que llegamos al final
+                if (newProducts.length < pageSize) {
+                    hasMoreProducts = false;
+                }
+
+                if (append) {
+                    fullInventory = [...fullInventory, ...newProducts];
+                } else {
+                    fullInventory = newProducts;
+                    loadingMessage.classList.add('hidden');
+                }
+
+                // Ocultar spinner del scroll infinito
+                document.getElementById('infinite-scroll-spinner').classList.add('hidden');
+
+                if (currentSearchQuery) {
                     totalProductsCount.textContent = `Resultados encontrados: ${fullInventory.length}`;
                 } else {
                     await fetchAbsoluteTotalCount();
@@ -819,11 +866,46 @@
                 }
 
                 renderCatalog();
+                
+                // Actualizar observación del scroll si aún quedan productos por cargar
+                updateInfiniteScrollObserver();
+                
             } catch (err) {
                 console.error('Error al cargar inventario de Supabase:', err);
                 disconnectAlert.classList.remove('hidden');
                 loadingMessage.classList.add('hidden');
+                document.getElementById('infinite-scroll-spinner').classList.add('hidden');
+            } finally {
+                isLoadingMore = false;
             }
+        }
+
+        // --- ACTUALIZAR OBSERVADOR DE SCROLL INFINITO (IntersectionObserver) ---
+        function updateInfiniteScrollObserver() {
+            const trigger = document.getElementById('infinite-scroll-trigger');
+            if (!trigger) return;
+            
+            // Destruir el observer anterior si existe
+            if (infiniteScrollObserver) {
+                infiniteScrollObserver.disconnect();
+                infiniteScrollObserver = null;
+            }
+
+            // Si ya no quedan productos por cargar, no creamos un nuevo observer
+            if (!hasMoreProducts) return;
+
+            infiniteScrollObserver = new IntersectionObserver(entries => {
+                const entry = entries[0];
+                if (entry.isIntersecting && !isLoadingMore && hasMoreProducts) {
+                    console.log('Scroll infinito activado: cargando página', currentPage + 1);
+                    currentPage++;
+                    loadInventory(currentSearchQuery, true);
+                }
+            }, {
+                rootMargin: '150px' // Precarga los productos 150px antes de que el usuario llegue al final
+            });
+
+            infiniteScrollObserver.observe(trigger);
         }
 
         function initRealtimeSubscriptions() {
