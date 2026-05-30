@@ -333,23 +333,53 @@
         </div>
     </div>
 
-    <!-- MODAL: CONFIRMAR ELIMINACIÓN -->
-    <div id="delete-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
-        <div class="bg-white border border-slate-100 rounded-2xl shadow-xl max-w-sm w-full p-6 text-center transform scale-95 transition-transform duration-300">
-            <div class="text-rose-500 text-4xl mb-3">
-                <i class="fas fa-exclamation-triangle"></i>
+    <!-- VISTA ELIMINAR PRODUCTO (Página Propia) -->
+    <div id="delete-view" class="hidden flex-col flex-grow">
+        <!-- BARRA SUPERIOR DE ELIMINACIÓN -->
+        <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm">
+            <button onclick="backToCatalogFromDelete()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors">
+                <i class="fas fa-arrow-left text-lg"></i>
+                <span>Cancelar</span>
+            </button>
+            <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
+                Eliminar Producto
+            </h1>
+            <div></div> <!-- Espaciador para centrado visual -->
+        </nav>
+
+        <!-- CONTENIDO DE ELIMINACIÓN -->
+        <main class="flex-grow max-w-xl w-full mx-auto px-4 py-8">
+            <div class="bg-white border border-slate-100 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-6 sm:p-8 space-y-6 text-center">
+                <div class="text-rose-500 text-5xl mb-4 animate-bounce">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                
+                <h3 class="text-xl font-black text-slate-800">¿Deseas eliminar este producto?</h3>
+                
+                <!-- Detalles del producto a eliminar -->
+                <div id="delete-product-card" class="flex items-center space-x-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-left">
+                    <!-- Se rellena dinámicamente -->
+                </div>
+                
+                <p class="text-sm text-slate-500 leading-relaxed">
+                    Esta acción es irreversible y eliminará permanentemente el producto del inventario de Supabase.
+                </p>
+
+                <!-- Botón de mantener presionado con barra de progreso -->
+                <div class="relative pt-6 flex flex-col items-center space-y-3">
+                    <button id="hold-delete-btn" class="relative overflow-hidden w-full py-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-black text-base rounded-2xl shadow-sm transition-all select-none cursor-pointer flex items-center justify-center space-x-2 active:scale-[0.98]">
+                        <!-- Barra de Progreso Interna -->
+                        <div id="hold-progress-bar" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-rose-500 to-rose-600 transition-all duration-75 ease-out w-0 pointer-events-none opacity-20"></div>
+                        <i class="fas fa-trash-alt text-sm pointer-events-none"></i>
+                        <span id="hold-btn-text" class="pointer-events-none">MANTÉN PRESIONADO</span>
+                    </button>
+                    
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider animate-pulse">
+                        Mantén presionado por 2 segundos para confirmar
+                    </p>
+                </div>
             </div>
-            <h3 class="text-lg font-bold text-slate-800">¿Eliminar este producto?</h3>
-            <p class="text-slate-500 text-sm mt-2">Esta acción no se puede deshacer y borrará permanentemente el producto del inventario de Supabase.</p>
-            <div class="mt-6 flex justify-center space-x-3">
-                <button id="confirm-delete-btn" class="px-5 py-2 bg-rose-500 text-white font-semibold rounded-lg hover:bg-rose-600 transition-colors shadow-sm text-sm">
-                    Sí, eliminar
-                </button>
-                <button id="cancel-delete-btn" class="px-5 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg hover:bg-slate-200 transition-colors text-sm">
-                    Cancelar
-                </button>
-            </div>
-        </div>
+        </main>
     </div>
 
     <!-- MODAL: EDITAR NOMBRE DEL NEGOCIO -->
@@ -508,9 +538,6 @@
         // Modales y Lector
         const scannerModal = document.getElementById('scanner-modal');
         const closeScannerBtn = document.getElementById('close-scanner-btn');
-        const deleteModal = document.getElementById('delete-modal');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
         const businessModal = document.getElementById('business-modal');
         const businessNameInput = document.getElementById('business-name-input');
         const saveBusinessBtn = document.getElementById('save-business-btn');
@@ -545,6 +572,12 @@
             if (cartView) {
                 cartView.classList.add('hidden');
                 cartView.classList.remove('flex');
+            }
+            
+            const deleteView = document.getElementById('delete-view');
+            if (deleteView) {
+                deleteView.classList.add('hidden');
+                deleteView.classList.remove('flex');
             }
             
             // Actualizar estado del botón flotante del carrito según la ruta
@@ -618,6 +651,52 @@
                     } else {
                         resetImagePreview();
                     }
+                } else {
+                    window.location.hash = '';
+                }
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            } else if (hash.startsWith('#eliminar-')) {
+                const id = parseInt(hash.replace('#eliminar-', ''), 10);
+                productIdToDelete = id;
+                
+                let product = fullInventory.find(p => p.id === id);
+                if (!product) {
+                    try {
+                        const { data, error } = await _supabase
+                            .from('productos')
+                            .select('*')
+                            .eq('id', id)
+                            .single();
+                        if (error) throw error;
+                        product = data;
+                    } catch (err) {
+                        console.error('Error al obtener producto para eliminar:', err);
+                        window.location.hash = '';
+                        return;
+                    }
+                }
+                
+                if (product) {
+                    const initial = product.nombre.charAt(0).toUpperCase();
+                    const gradient = getGradient(product.nombre);
+                    const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
+                        ? `<img src="${product.imagen}" alt="${product.nombre}" class="h-14 w-14 rounded-xl object-cover shadow-sm flex-shrink-0 select-none" />`
+                        : `<div class="h-14 w-14 rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-xl shadow-sm flex-shrink-0 select-none">${initial}</div>`;
+                        
+                    document.getElementById('delete-product-card').innerHTML = `
+                        ${productMediaHTML}
+                        <div class="min-w-0 flex-grow">
+                            <h4 class="font-bold text-slate-800 text-sm truncate">${product.nombre}</h4>
+                            ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
+                            <p class="text-xs font-black text-slate-600 mt-1">$${parseFloat(product.precio_usd).toFixed(2)} USD</p>
+                        </div>
+                    `;
+                    
+                    if (deleteView) {
+                        deleteView.classList.remove('hidden');
+                        deleteView.classList.add('flex');
+                    }
+                    resetDeleteHoldState();
                 } else {
                     window.location.hash = '';
                 }
@@ -904,8 +983,8 @@
             
             if (!floatingBtn) return;
             
-            // Ocultar de forma estricta (usando display none) si estamos en la vista de carrito
-            if (window.location.hash === '#carrito') {
+            // Ocultar de forma estricta (usando display none) si estamos en la vista de carrito o en la de eliminar
+            if (window.location.hash === '#carrito' || window.location.hash.startsWith('#eliminar-')) {
                 floatingBtn.style.setProperty('display', 'none', 'important');
                 return;
             }
@@ -1290,6 +1369,7 @@
             loadExchangeRate();
             loadInventory();
             initRealtimeSubscriptions();
+            initDeleteHoldEvents();
         });
 
         // --- FORMATEADOR DE BOLÍVARES (Puntos para miles, comas para decimales) ---
@@ -1577,19 +1657,100 @@
 
         // --- CONFIRMAR ELIMINACIÓN ---
         function confirmDelete(id) {
-            productIdToDelete = id;
-            deleteModal.classList.remove('hidden');
-            deleteModal.classList.add('flex');
+            window.location.hash = '#eliminar-' + id;
         }
 
-        cancelDeleteBtn.addEventListener('click', () => {
-            deleteModal.classList.add('hidden');
-            deleteModal.classList.remove('flex');
-            productIdToDelete = null;
-        });
+        function backToCatalogFromDelete() {
+            window.location.hash = '';
+        }
 
-        confirmDeleteBtn.addEventListener('click', async () => {
+        // Variables de control para mantener presionado para eliminar
+        let deleteHoldInterval = null;
+        let deleteHoldProgress = 0;
+        const deleteHoldDuration = 2000; // 2 segundos
+        let deleteHoldStartTime = null;
+
+        function startDeleteHold(e) {
+            if (e && e.type === 'touchstart') {
+                e.preventDefault(); // Evitar zoom y menús de selección en dispositivos táctiles
+            }
+            if (deleteHoldInterval) return;
+
+            const btn = document.getElementById('hold-delete-btn');
+            const btnText = document.getElementById('hold-btn-text');
+            const progressBar = document.getElementById('hold-progress-bar');
+
+            if (btn) {
+                btn.classList.remove('bg-slate-100', 'text-slate-700');
+                btn.classList.add('bg-slate-50', 'text-slate-800');
+            }
+            if (btnText) {
+                btnText.textContent = 'MANTÉN PRESIONADO...';
+            }
+
+            deleteHoldStartTime = Date.now();
+
+            deleteHoldInterval = setInterval(() => {
+                const elapsed = Date.now() - deleteHoldStartTime;
+                deleteHoldProgress = Math.min((elapsed / deleteHoldDuration) * 100, 100);
+
+                if (progressBar) {
+                    progressBar.style.width = deleteHoldProgress + '%';
+                    progressBar.style.opacity = (0.2 + (deleteHoldProgress / 100) * 0.8).toString();
+                }
+
+                if (deleteHoldProgress >= 100) {
+                    clearInterval(deleteHoldInterval);
+                    deleteHoldInterval = null;
+                    executeProductDelete();
+                }
+            }, 30);
+        }
+
+        function cancelDeleteHold() {
+            if (deleteHoldInterval) {
+                clearInterval(deleteHoldInterval);
+                deleteHoldInterval = null;
+            }
+            resetDeleteHoldState();
+        }
+
+        function resetDeleteHoldState() {
+            deleteHoldProgress = 0;
+            deleteHoldStartTime = null;
+
+            const btn = document.getElementById('hold-delete-btn');
+            const btnText = document.getElementById('hold-btn-text');
+            const progressBar = document.getElementById('hold-progress-bar');
+
+            if (btn) {
+                btn.className = "relative overflow-hidden w-full py-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-black text-base rounded-2xl shadow-sm transition-all select-none cursor-pointer flex items-center justify-center space-x-2 active:scale-[0.98]";
+                btn.disabled = false;
+                btn.style.pointerEvents = 'auto';
+            }
+            if (btnText) {
+                btnText.textContent = 'MANTÉN PRESIONADO';
+            }
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.style.opacity = '0.2';
+            }
+        }
+
+        async function executeProductDelete() {
             if (!productIdToDelete) return;
+
+            const btn = document.getElementById('hold-delete-btn');
+            const btnText = document.getElementById('hold-btn-text');
+
+            if (btn) {
+                btn.disabled = true;
+                btn.style.pointerEvents = 'none';
+            }
+            if (btnText) {
+                btnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ELIMINANDO...';
+            }
+
             try {
                 const { error } = await _supabase
                     .from('productos')
@@ -1598,18 +1759,43 @@
 
                 if (error) throw error;
 
-                // Actualización local instantánea tras borrar
+                // Eliminar optimista en la memoria local
                 fullInventory = fullInventory.filter(p => p.id !== productIdToDelete);
-                renderCatalog();
+                
+                // Si el producto estaba en el carrito, también eliminarlo de allí
+                const cartItemIndex = cart.findIndex(item => item.id === productIdToDelete);
+                if (cartItemIndex !== -1) {
+                    cart.splice(cartItemIndex, 1);
+                    saveCart();
+                }
 
-                deleteModal.classList.add('hidden');
-                deleteModal.classList.remove('flex');
+                renderCatalog();
+                updateCartFloatingButton();
+
+                // Volver al catálogo y limpiar estado
+                window.location.hash = '';
                 productIdToDelete = null;
             } catch (err) {
                 console.error('Error al eliminar producto de Supabase:', err);
                 alert('No se pudo eliminar el producto: ' + err.message);
+                resetDeleteHoldState();
             }
-        });
+        }
+
+        function initDeleteHoldEvents() {
+            const btn = document.getElementById('hold-delete-btn');
+            if (!btn) return;
+
+            // Eventos de ratón
+            btn.addEventListener('mousedown', startDeleteHold);
+            btn.addEventListener('mouseup', cancelDeleteHold);
+            btn.addEventListener('mouseleave', cancelDeleteHold);
+
+            // Eventos táctiles (Móviles)
+            btn.addEventListener('touchstart', startDeleteHold, { passive: false });
+            btn.addEventListener('touchend', cancelDeleteHold);
+            btn.addEventListener('touchcancel', cancelDeleteHold);
+        }
 
         // --- NOMBRE DE NEGOCIO (Al pulsar el título directamente) ---
         businessNameDisplay.addEventListener('click', () => {
