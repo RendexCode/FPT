@@ -1073,17 +1073,34 @@
             let totalUsd = 0;
 
             cart.forEach(item => {
-                // Si es modo divisa, utilizar precio_divisa; si no existe o es bcv, precio_usd
-                const itemPrice = (cartPriceMode === 'divisa' && item.precio_divisa) 
-                    ? parseFloat(item.precio_divisa) 
-                    : parseFloat(item.precio_usd);
+                let itemPrice = 0;
+                let hasDivisaPrice = true;
+                
+                if (cartPriceMode === 'divisa') {
+                    const divisaVal = parseFloat(item.precio_divisa);
+                    if (!divisaVal || divisaVal <= 0) {
+                        hasDivisaPrice = false;
+                        itemPrice = 0;
+                    } else {
+                        itemPrice = divisaVal;
+                    }
+                } else {
+                    itemPrice = parseFloat(item.precio_usd) || 0;
+                }
                 
                 const itemTotalUsd = itemPrice * item.quantity;
                 totalUsd += itemTotalUsd;
                 
-                const priceInfo = cartPriceMode === 'divisa'
-                    ? `$${itemPrice.toFixed(2)} USD c/u`
-                    : `$${itemPrice.toFixed(2)} USD / ${formatBS((itemPrice * exchangeRate).toFixed(2))} BS. c/u`;
+                let priceInfo = '';
+                if (cartPriceMode === 'divisa') {
+                    if (hasDivisaPrice) {
+                        priceInfo = `$${itemPrice.toFixed(2)} USD c/u`;
+                    } else {
+                        priceInfo = `<span class="text-rose-500 font-bold flex items-center mt-0.5 text-xs"><i class="fas fa-exclamation-triangle mr-1.5 text-[10px] animate-pulse"></i>Sin precio en divisa</span>`;
+                    }
+                } else {
+                    priceInfo = `$${itemPrice.toFixed(2)} USD / ${formatBS((itemPrice * exchangeRate).toFixed(2))} BS. c/u`;
+                }
 
                 html += `
                 <div class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300">
