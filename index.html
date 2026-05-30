@@ -547,6 +547,9 @@
                 cartView.classList.remove('flex');
             }
             
+            // Actualizar estado del botón flotante del carrito según la ruta
+            updateCartFloatingButton();
+            
             if (hash === '#agregar') {
                 formView.classList.remove('hidden');
                 formView.classList.add('flex');
