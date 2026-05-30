@@ -513,6 +513,8 @@
         let absoluteTotalCount = 0;
         let cartPriceMode = 'bcv'; // 'bcv' o 'divisa'
         let searchTimeout = null;
+        // IDs de productos recién guardados localmente — protege la imagen contra el eco de Realtime
+        const recentlyUpdatedIds = new Set();
 
         // Variables de paginación y scroll infinito
         let currentPage = 0;
@@ -1479,30 +1481,56 @@
 
             } else if (eventType === 'UPDATE') {
                 const index = fullInventory.findIndex(p => p.id === newRow.id);
-                
-                if (matchesSearch(newRow)) {
+
+                // Si este producto acaba de ser guardado localmente (actualización optimista),
+                // ignoramos el eco de Realtime para proteger la imagen base64 que ya está en memoria.
+                // Supabase Realtime trunca columnas text grandes (base64 de imágenes) en el payload.
+                if (recentlyUpdatedIds.has(newRow.id)) {
+                    recentlyUpdatedIds.delete(newRow.id);
+                    // Solo actualizamos los campos no-imagen del inventario local sin re-renderizar
                     if (index !== -1) {
-                        // Actualizar existente
-                        fullInventory[index] = newRow;
+                        const currentImagen = fullInventory[index].imagen;
+                        fullInventory[index] = { ...newRow, imagen: currentImagen };
+                    }
+                    // Aún así actualizamos el carrito preservando imagen
+                    const cartIndex = cart.findIndex(item => item.id === newRow.id);
+                    if (cartIndex !== -1) {
+                        const qty = cart[cartIndex].quantity;
+                        const cartImagen = cart[cartIndex].imagen;
+                        cart[cartIndex] = { ...newRow, imagen: cartImagen, quantity: qty };
+                        saveCart();
+                    }
+                    return;
+                }
+
+                // Actualización de otro cliente: preservar imagen local si el payload la omite
+                const localImagen = index !== -1 ? fullInventory[index].imagen : null;
+                const mergedRow = {
+                    ...newRow,
+                    imagen: newRow.imagen || localImagen || null
+                };
+
+                if (matchesSearch(mergedRow)) {
+                    if (index !== -1) {
+                        fullInventory[index] = mergedRow;
                     } else {
-                        // No estaba visible pero ahora coincide con el filtro, agregarlo
-                        fullInventory.push(newRow);
+                        fullInventory.push(mergedRow);
                     }
                     fullInventory.sort((a, b) => a.nombre.localeCompare(b.nombre));
                     renderCatalog();
                 } else {
                     if (index !== -1) {
-                        // Estaba visible pero ya no coincide con la búsqueda, removerlo
                         fullInventory.splice(index, 1);
                         renderCatalog();
                     }
                 }
 
-                // Actualizar también el producto si está en el carrito
+                // Actualizar también el producto si está en el carrito (preservando imagen)
                 const cartIndex = cart.findIndex(item => item.id === newRow.id);
                 if (cartIndex !== -1) {
                     const qty = cart[cartIndex].quantity;
-                    cart[cartIndex] = { ...newRow, quantity: qty };
+                    const cartImagen = cart[cartIndex].imagen;
+                    cart[cartIndex] = { ...mergedRow, quantity: qty, imagen: mergedRow.imagen || cartImagen || null };
                     saveCart();
                     renderCartItems();
                 }
@@ -1863,6 +1891,9 @@
                         .eq('id', editingProduct.id);
 
                     if (error) throw error;
+
+                    // Marcar como actualización local para que el eco de Realtime no sobreescriba la imagen
+                    recentlyUpdatedIds.add(editingProduct.id);
 
                     // Actualización optimista local instantánea para edición
                     const index = fullInventory.findIndex(p => p.id === editingProduct.id);
