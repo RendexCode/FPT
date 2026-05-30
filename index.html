@@ -376,6 +376,55 @@
         </div>
     </div>
 
+    <!-- BOTÓN FLOTANTE DEL CARRITO -->
+    <button id="floating-cart-btn" class="fixed bottom-6 right-6 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-14 w-14 rounded-full flex items-center justify-center shadow-lg hover:shadow-rose-300 hover:scale-105 active:scale-95 transition-all duration-300 z-40 hidden" onclick="openCartModal()" title="Ver carrito">
+        <i class="fas fa-shopping-cart text-xl"></i>
+        <span id="floating-cart-badge" class="absolute -top-1 -right-1 bg-teal-500 text-white text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">0</span>
+    </button>
+
+    <!-- MODAL: CARRITO DE COMPRAS -->
+    <div id="cart-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-all duration-300 opacity-0 cursor-pointer" onclick="closeCartModal(event)">
+        <div class="bg-white border border-slate-100 rounded-2xl shadow-xl max-w-md w-full p-6 flex flex-col max-h-[85vh] transform scale-95 transition-all duration-300 cursor-default animate-in fade-in duration-300" onclick="event.stopPropagation()">
+            <!-- Encabezado -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-shopping-cart text-rose-500 text-lg"></i>
+                    <h3 class="text-lg font-bold text-slate-800">Mi Carrito</h3>
+                </div>
+                <button onclick="closeCartModal(event)" class="text-slate-400 hover:text-slate-600 transition-colors p-1" title="Cerrar modal">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Listado de items (con scroll) -->
+            <div id="cart-items-container" class="flex-grow overflow-y-auto space-y-3 pr-1 py-1 min-h-[150px] max-h-[40vh]">
+                <!-- Se rellena dinámicamente -->
+            </div>
+
+            <!-- Totales -->
+            <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                <div class="flex justify-between items-baseline">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total en Dólares:</span>
+                    <span id="cart-total-usd" class="text-2xl font-black text-slate-900">$0.00 <span class="text-[10px] font-bold text-slate-400">USD</span></span>
+                </div>
+                <div class="flex justify-between items-baseline">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total en Bolívares:</span>
+                    <span id="cart-total-bs" class="text-2xl font-black text-rose-600">0,00 <span class="text-[10px] font-bold text-rose-400">BS.</span></span>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="clearCart()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm transition-colors animate-all duration-200" title="Vaciar Carrito">
+                    <i class="fas fa-trash-alt mr-2"></i>Vaciar
+                </button>
+                <button onclick="closeCartModal(event)" class="py-2.5 px-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-xl font-bold text-sm hover:from-rose-600 hover:to-rose-700 transition-colors shadow-md hover:shadow-rose-100" title="Cerrar">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- SUPABASE CLIENT JS LIBRARY -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -708,6 +757,256 @@
             }, 300);
         }
 
+        // --- GESTIÓN DEL CARRITO DE COMPRAS ---
+        let cart = [];
+
+        // Cargar el carrito desde localStorage al iniciar
+        function initCart() {
+            try {
+                const storedCart = localStorage.getItem('rendex_cart');
+                if (storedCart) {
+                    cart = JSON.parse(storedCart);
+                }
+            } catch (e) {
+                console.error("Error al cargar el carrito de localStorage:", e);
+                cart = [];
+            }
+            updateCartFloatingButton();
+        }
+
+        // Guardar el carrito en localStorage
+        function saveCart() {
+            try {
+                localStorage.setItem('rendex_cart', JSON.stringify(cart));
+            } catch (e) {
+                console.error("Error al guardar el carrito en localStorage:", e);
+            }
+            updateCartFloatingButton();
+        }
+
+        // Agregar producto al carrito
+        function addProductToCart(productId, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            
+            // Buscar el producto en la memoria
+            const product = fullInventory.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingIndex = cart.findIndex(item => item.id === productId);
+            if (existingIndex > -1) {
+                cart[existingIndex].quantity += 1;
+            } else {
+                cart.push({
+                    id: product.id,
+                    nombre: product.nombre,
+                    precio_usd: parseFloat(product.precio_usd) || 0,
+                    precio_divisa: parseFloat(product.precio_divisa) || 0,
+                    quantity: 1
+                });
+            }
+
+            saveCart();
+            updateProductCardCartState(productId);
+            
+            // Animación del botón flotante
+            animateFloatingCartButton();
+        }
+
+        // Ajustar cantidad de un elemento en el carrito
+        function adjustCartItemQuantity(productId, amount) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex === -1) return;
+
+            cart[itemIndex].quantity += amount;
+            
+            if (cart[itemIndex].quantity <= 0) {
+                cart.splice(itemIndex, 1);
+            }
+
+            saveCart();
+            updateProductCardCartState(productId);
+            renderCartItems();
+        }
+
+        // Eliminar producto del carrito
+        function removeProductFromCart(productId) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex === -1) return;
+
+            cart.splice(itemIndex, 1);
+
+            saveCart();
+            updateProductCardCartState(productId);
+            renderCartItems();
+        }
+
+        // Vaciar el carrito
+        function clearCart() {
+            const oldIds = cart.map(item => item.id);
+            cart = [];
+            saveCart();
+            
+            // Actualizar todos los botones de tarjetas que estaban en el carrito
+            oldIds.forEach(id => updateProductCardCartState(id));
+            
+            closeCartModal();
+        }
+
+        // Actualizar visualmente el estado del botón del carrito de una tarjeta
+        function updateProductCardCartState(productId) {
+            const cardBtn = document.querySelector(`[data-cart-btn-id="${productId}"]`);
+            if (!cardBtn) return;
+            
+            const cartItem = cart.find(item => item.id === productId);
+            if (cartItem) {
+                cardBtn.className = "flex items-center justify-center px-2.5 py-1.5 rounded-lg transition-all duration-200 border font-bold bg-rose-50 text-rose-600 border-rose-200";
+                
+                let badge = cardBtn.querySelector('.cart-btn-badge');
+                if (badge) {
+                    badge.textContent = cartItem.quantity;
+                } else {
+                    badge = document.createElement('span');
+                    badge.className = 'cart-btn-badge ml-1 bg-rose-500 text-white font-black text-[9px] rounded-full h-4 min-w-4 px-1 flex items-center justify-center';
+                    badge.textContent = cartItem.quantity;
+                    cardBtn.appendChild(badge);
+                }
+            } else {
+                cardBtn.className = "flex items-center justify-center px-2.5 py-1.5 rounded-lg transition-all duration-200 border font-bold bg-white text-slate-500 border-slate-200 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200";
+                const badge = cardBtn.querySelector('.cart-btn-badge');
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        }
+
+        // Mostrar / Ocultar el botón flotante del carrito
+        function updateCartFloatingButton() {
+            const floatingBtn = document.getElementById('floating-cart-btn');
+            const floatingBadge = document.getElementById('floating-cart-badge');
+            
+            if (!floatingBtn) return;
+            
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            if (totalItems > 0) {
+                floatingBtn.classList.remove('hidden');
+                floatingBadge.textContent = totalItems;
+            } else {
+                floatingBtn.classList.add('hidden');
+            }
+        }
+
+        // Animación micro-interactiva del botón flotante al agregar item
+        function animateFloatingCartButton() {
+            const floatingBtn = document.getElementById('floating-cart-btn');
+            if (floatingBtn && !floatingBtn.classList.contains('hidden')) {
+                floatingBtn.classList.remove('hover:scale-105');
+                floatingBtn.classList.add('scale-110', 'rotate-6');
+                setTimeout(() => {
+                    floatingBtn.classList.remove('scale-110', 'rotate-6');
+                    floatingBtn.classList.add('hover:scale-105');
+                }, 200);
+            }
+        }
+
+        // Renderizar los productos dentro del modal del carrito y calcular totales
+        function renderCartItems() {
+            const container = document.getElementById('cart-items-container');
+            const totalUsdSpan = document.getElementById('cart-total-usd');
+            const totalBsSpan = document.getElementById('cart-total-bs');
+            
+            if (!container) return;
+            
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 text-center text-slate-400">
+                        <i class="fas fa-shopping-cart text-3xl mb-3 opacity-40"></i>
+                        <p class="text-xs font-semibold">Tu carrito está vacío</p>
+                    </div>
+                `;
+                totalUsdSpan.innerHTML = `$0.00 <span class="text-[10px] font-bold text-slate-400">USD</span>`;
+                totalBsSpan.innerHTML = `0,00 <span class="text-[10px] font-bold text-rose-400">BS.</span>`;
+                return;
+            }
+
+            let html = '';
+            let totalUsd = 0;
+
+            cart.forEach(item => {
+                const itemTotalUsd = item.precio_usd * item.quantity;
+                totalUsd += itemTotalUsd;
+                
+                html += `
+                <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div class="flex-grow min-w-0 pr-3">
+                        <h4 class="font-bold text-slate-800 text-sm truncate" title="${item.nombre}">${item.nombre}</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">
+                            $${item.precio_usd.toFixed(2)} USD / ${formatBS((item.precio_usd * exchangeRate).toFixed(2))} BS. c/u
+                        </p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2.5 flex-shrink-0">
+                        <!-- Controles de cantidad -->
+                        <div class="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+                            <button onclick="adjustCartItemQuantity(${item.id}, -1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-rose-500 font-extrabold hover:bg-slate-50 rounded transition-colors text-[10px]">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <span class="text-[11px] font-black text-slate-800 w-5 text-center">${item.quantity}</span>
+                            <button onclick="adjustCartItemQuantity(${item.id}, 1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-rose-500 font-extrabold hover:bg-slate-50 rounded transition-colors text-[10px]">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Eliminar -->
+                        <button onclick="removeProductFromCart(${item.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors text-sm" title="Eliminar del carrito">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            
+            const totalBsf = (totalUsd * exchangeRate).toFixed(2);
+            totalUsdSpan.innerHTML = `$${totalUsd.toFixed(2)} <span class="text-[10px] font-bold text-slate-400">USD</span>`;
+            totalBsSpan.innerHTML = `${formatBS(totalBsf)} <span class="text-[10px] font-bold text-rose-400">BS.</span>`;
+        }
+
+        // Abrir y Cerrar Modal del Carrito con animaciones CSS
+        function openCartModal() {
+            const modal = document.getElementById('cart-modal');
+            renderCartItems();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Forzar reflow para animación
+            modal.offsetHeight;
+            
+            modal.classList.add('opacity-100');
+            modal.classList.remove('opacity-0');
+            modal.querySelector('.transform').classList.remove('scale-95');
+            modal.querySelector('.transform').classList.add('scale-100');
+        }
+
+        function closeCartModal(event) {
+            if (event) event.stopPropagation();
+            const modal = document.getElementById('cart-modal');
+            
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.transform').classList.remove('scale-100');
+            modal.querySelector('.transform').classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
         searchScannerBtn.addEventListener('click', () => startCameraScanner('search'));
         formScannerBtn.addEventListener('click', () => startCameraScanner('form'));
         closeScannerBtn.addEventListener('click', stopCameraScanner);
@@ -958,6 +1257,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initNavbarResizeObserver();
+            initCart();
             loadBusinessName();
             loadExchangeRate();
             loadInventory();
@@ -994,6 +1294,16 @@
                 const priceBsf = (price * exchangeRate).toFixed(2);
                 const priceDivisa = parseFloat(product.precio_divisa) || 0;
                 
+                // Determinar estado de este producto en el carrito
+                const cartItem = cart.find(item => item.id === product.id);
+                const isInCart = !!cartItem;
+                const cartBtnClass = isInCart 
+                    ? 'bg-rose-50 text-rose-600 border-rose-200' 
+                    : 'bg-white text-slate-500 border-slate-200 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200';
+                const cartBadgeHTML = isInCart 
+                    ? `<span class="cart-btn-badge ml-1 bg-rose-500 text-white font-black text-[9px] rounded-full h-4 min-w-4 px-1 flex items-center justify-center">${cartItem.quantity}</span>`
+                    : '';
+
                 const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
                     ? `<img src="${product.imagen}" alt="${product.nombre}" onclick="openProductImage(${product.id}, event)" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none cursor-zoom-in transform hover:scale-[1.08] transition-transform duration-300" title="Hacer clic para ampliar imagen" />`
                     : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
@@ -1046,7 +1356,7 @@
                                 }
                             </div>
 
-                            <!-- Botones de Acción (Editar y Eliminar) -->
+                            <!-- Botones de Acción (Editar, Eliminar y Carrito) -->
                             <div class="flex items-center space-x-1.5">
                                 <button onclick="editProduct(${product.id})" class="flex items-center space-x-1 px-3 py-1.5 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-500 rounded-lg transition-all duration-200 border border-slate-200 hover:border-rose-200 font-bold" title="Editar Producto">
                                     <i class="fas fa-pen text-[10px]"></i>
@@ -1055,6 +1365,10 @@
                                 <button onclick="confirmDelete(${product.id})" class="flex items-center space-x-1 px-3 py-1.5 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-all duration-200 border border-slate-200 hover:border-rose-200 font-bold" title="Eliminar Producto">
                                     <i class="fas fa-trash-alt text-[10px]"></i>
                                     <span>Eliminar</span>
+                                </button>
+                                <button onclick="addProductToCart(${product.id}, event)" data-cart-btn-id="${product.id}" class="flex items-center justify-center px-2.5 py-1.5 rounded-lg transition-all duration-200 border font-bold ${cartBtnClass}" title="Añadir al carrito">
+                                    <i class="fas fa-shopping-cart text-[10px]"></i>
+                                    ${cartBadgeHTML}
                                 </button>
                             </div>
                         </div>
