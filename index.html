@@ -65,6 +65,27 @@
                 transform: translateX(0);
             }
         }
+        /* Contenedor con query para auto-ajustar texto de precios */
+        .product-card-details {
+            container-type: inline-size;
+            width: 100%;
+        }
+        .price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 0.25rem;
+            margin-top: 0.375rem;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            width: 100%;
+        }
+        .price-text {
+            font-weight: 800;
+            line-height: 1;
+            flex-shrink: 0;
+            font-size: clamp(12px, 6.5cqw, 18px);
+        }
     </style>
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col antialiased">
@@ -990,20 +1011,20 @@
                             ${productMediaHTML}
  
                             <!-- Detalles y Precios del Producto (Con marquesina interactiva al hacer hover o touch) -->
-                            <div class="flex-grow min-w-0 text-left overflow-hidden">
+                            <div class="product-card-details flex-grow min-w-0 text-left overflow-hidden">
                                 <div class="scroll-title-container" onmouseenter="adjustScrollTitle(this)" onmouseleave="resetScrollTitle(this)" ontouchstart="adjustScrollTitle(this)" ontouchend="resetScrollTitle(this)">
                                     <h3 class="scroll-title text-base sm:text-lg font-bold text-slate-800 tracking-tight group-hover:text-rose-500 transition-colors duration-200">${product.nombre}</h3>
                                 </div>
                                 ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-1"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
                                 
                                 <!-- Precios destacados -->
-                                <div class="flex flex-wrap items-baseline gap-1.5 mt-1.5 text-slate-900">
-                                    <span class="text-xl sm:text-2xl font-extrabold leading-none">
-                                        $${price.toFixed(2)} <span class="text-[10px] font-bold text-slate-400 uppercase">USD</span>
+                                <div class="price-row">
+                                    <span class="price-text">
+                                        $${price.toFixed(2)} <span class="text-[9px] font-bold text-slate-400 uppercase">USD</span>
                                     </span>
-                                    <span class="text-slate-300 font-semibold px-0.5">/</span>
-                                    <span class="text-xl sm:text-2xl font-extrabold leading-none">
-                                        ${formatBS(priceBsf)} <span class="text-[10px] font-bold text-slate-400 uppercase">BS.</span>
+                                    <span class="text-slate-300 font-semibold px-0.5 flex-shrink-0">/</span>
+                                    <span class="price-text">
+                                        ${formatBS(priceBsf)} <span class="text-[9px] font-bold text-slate-400 uppercase">BS.</span>
                                     </span>
                                 </div>
                                 ${priceDivisa > 0 ? `
