@@ -22,6 +22,7 @@
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
+            height: 6px;
         }
         ::-webkit-scrollbar-track {
             background: #f1f1f1;
@@ -32,6 +33,12 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
+        }
+        /* Ocultar barra de desplazamiento en inputs */
+        input::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
         }
         /* Efecto marquesina premium estilo Spotify (Auto-reverse Bounce con GPU Acceleration) */
         .scroll-title-container {
@@ -70,7 +77,7 @@
     <!-- VISTA PRINCIPAL: CATÁLOGO -->
     <div id="catalog-view" class="flex flex-col flex-grow">
         <!-- BARRA SUPERIOR (Navbar) -->
-        <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-3.5 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm">
+        <nav id="navbar-header" class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-3.5 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm">
             <div class="flex items-center space-x-2">
                 <!-- Título editable al hacer clic directo -->
                 <span id="business-name-display" class="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 bg-clip-text text-transparent cursor-pointer hover:opacity-80 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200" title="Haz clic aquí para cambiar el nombre de negocio">
@@ -97,8 +104,8 @@
             </div>
         </nav>
 
-        <!-- SEGUNDA BARRA: BUSCADOR -->
-        <div class="bg-white border-b border-slate-100 shadow-sm sticky top-[68px] sm:top-[76px] z-30 px-4 py-3 sm:px-8">
+        <!-- SEGUNDA BARRA: BUSCADOR (Posicionado de forma dinámica mediante ResizeObserver) -->
+        <div id="search-bar-container" class="bg-white border-b border-slate-100 shadow-sm sticky top-[76px] z-30 px-4 py-3 sm:px-8">
             <div class="max-w-3xl mx-auto relative flex items-center">
                 <div class="absolute left-4 text-slate-400">
                     <i class="fas fa-search"></i>
@@ -705,6 +712,22 @@
             title.style.removeProperty('--scroll-duration');
         }
 
+        // --- AJUSTE DINÁMICO DE ALTURA PARA EL BUSCADOR PEGAJOSO ---
+        function initNavbarResizeObserver() {
+            const navbar = document.getElementById('navbar-header');
+            const searchBarContainer = document.getElementById('search-bar-container');
+            
+            if (navbar && searchBarContainer) {
+                const observer = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        const height = entry.target.offsetHeight;
+                        searchBarContainer.style.top = `${height}px`;
+                    }
+                });
+                observer.observe(navbar);
+            }
+        }
+
         // --- CONEXIÓN Y DATOS SUPABASE ---
 
         // Cargar Nombre de Negocio desde Supabase
@@ -835,6 +858,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            initNavbarResizeObserver();
             loadBusinessName();
             loadExchangeRate();
             loadInventory();
