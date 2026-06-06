@@ -139,7 +139,7 @@
                 
                 <!-- Select de Marca -->
                 <select id="brand-select" class="flex-shrink-0 px-3 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-xs sm:text-sm text-slate-700 font-bold transition-all duration-200 max-w-[110px] sm:max-w-[160px] cursor-pointer shadow-sm">
-                    <option value="">Todas las marcas</option>
+                    <option value="">Marcas</option>
                 </select>
 
                 <!-- BOTÓN DEL CARRITO EN LA BARRA DE BÚSQUEDA (Se oculta automáticamente al cambiar de página) -->
@@ -1689,7 +1689,7 @@
                 
                 if (brandSelect) {
                     const currentValue = brandSelect.value;
-                    brandSelect.innerHTML = '<option value="">Todas las marcas</option>';
+                    brandSelect.innerHTML = '<option value="">Marcas</option>';
                     brands.forEach(brand => {
                         const opt = document.createElement('option');
                         opt.value = brand;
