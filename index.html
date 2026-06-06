@@ -1673,11 +1673,11 @@
                 html += `
                     <div class="group bg-white border border-slate-200 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] hover:border-rose-300 transition-all duration-300 flex flex-col overflow-hidden relative">
                         
-                        <!-- Marca Flotante en la Esquina Superior Derecha -->
+                        <!-- Marca Flotante en la Esquina Superior Derecha (Estilo Etiqueta de Descuento/Oferta) -->
                         ${product.marca ? `
-                        <span class="absolute top-3 right-3 bg-rose-50/80 backdrop-blur-[2px] text-rose-600 text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full border border-rose-100 shadow-[0_2px_8px_rgba(244,63,94,0.08)] uppercase tracking-wider select-none z-10 flex items-center max-w-[100px] transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_4px_12px_rgba(244,63,94,0.15)]" title="${product.marca}">
-                            <i class="fas fa-tag mr-1 text-[8px] sm:text-[9px] opacity-75 flex-shrink-0"></i>
-                            <span class="truncate">${product.marca}</span>
+                        <span class="absolute top-0 right-0 bg-gradient-to-bl from-rose-500 to-pink-600 text-white text-[9px] sm:text-[10px] font-black px-3 py-1.5 rounded-bl-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-top-right transition-all duration-300" title="${product.marca}">
+                            <i class="fas fa-tag mr-1 text-[8px] sm:text-[9px] flex-shrink-0"></i>
+                            <span class="max-w-[70px] truncate">${product.marca}</span>
                         </span>
                         ` : ''}
 
