@@ -456,13 +456,21 @@
                 </h1>
             </div>
             
-            <!-- Switch Premium para cambiar de BCV a DIVISA -->
-            <div class="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200 shadow-sm flex-shrink-0">
-                <button onclick="setCartPriceMode('bcv')" id="cart-mode-bcv" class="px-3.5 py-1.5 text-xs font-black rounded-full transition-all duration-300 shadow-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white">
-                    BCV
-                </button>
-                <button onclick="setCartPriceMode('divisa')" id="cart-mode-divisa" class="px-3.5 py-1.5 text-xs font-extrabold rounded-full transition-all duration-300 text-slate-500 hover:text-slate-800">
-                    DIVISA
+            <div class="flex items-center space-x-2">
+                <!-- Switch Premium para cambiar de BCV a DIVISA -->
+                <div class="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200 shadow-sm flex-shrink-0">
+                    <button onclick="setCartPriceMode('bcv')" id="cart-mode-bcv" class="px-3.5 py-1.5 text-xs font-black rounded-full transition-all duration-300 shadow-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white">
+                        BCV
+                    </button>
+                    <button onclick="setCartPriceMode('divisa')" id="cart-mode-divisa" class="px-3.5 py-1.5 text-xs font-extrabold rounded-full transition-all duration-300 text-slate-500 hover:text-slate-800">
+                        DIVISA
+                    </button>
+                </div>
+                
+                <!-- Botón Historial de Ventas -->
+                <button onclick="navigateToHistory()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-rose-600 font-bold px-3 py-1.5 rounded-full shadow-sm text-xs transition-all flex items-center space-x-1.5" title="Ver historial de ventas">
+                    <i class="fas fa-history text-[10px]"></i>
+                    <span class="hidden sm:inline">Historial</span>
                 </button>
             </div>
         </nav>
@@ -503,6 +511,41 @@
 
             <!-- Listado de items (Ocupa todo el ancho restante con scrollbar independiente) -->
             <div id="cart-items-container" class="flex-grow overflow-y-auto space-y-3 pr-1.5 pb-6">
+                <!-- Se rellena dinámicamente -->
+            </div>
+        </main>
+    </div>
+
+    <!-- VISTA HISTORIAL DE VENTAS (Página Propia) -->
+    <div id="history-view" class="hidden flex-col h-screen max-h-screen overflow-hidden">
+        <!-- BARRA SUPERIOR DE HISTORIAL -->
+        <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm flex-shrink-0">
+            <div class="flex items-center">
+                <button onclick="backToCartFromHistory()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors mr-4" title="Volver al carrito">
+                    <i class="fas fa-arrow-left text-lg"></i>
+                    <span class="hidden sm:inline">Volver al Carrito</span>
+                </button>
+                <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
+                    Historial de Ventas
+                </h1>
+            </div>
+            
+            <!-- Botón para recargar historial -->
+            <button onclick="loadSalesHistory()" class="text-slate-500 hover:text-rose-500 p-2 transition-colors text-sm" title="Actualizar historial">
+                <i class="fas fa-sync-alt text-base"></i>
+            </button>
+        </nav>
+
+        <!-- CONTENIDO DEL HISTORIAL -->
+        <main class="flex-grow max-w-2xl w-full mx-auto px-4 py-6 flex flex-col min-h-0 overflow-hidden space-y-4">
+            <!-- Totales del historial o resumen simple -->
+            <div class="flex-shrink-0 flex items-center justify-between">
+                <h3 id="history-count-label" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cargando ventas...</h3>
+                <div class="h-px flex-grow bg-slate-200/60 ml-4"></div>
+            </div>
+
+            <!-- Listado de ventas (Scroll independiente) -->
+            <div id="history-items-container" class="flex-grow overflow-y-auto space-y-3 pr-1.5 pb-6">
                 <!-- Se rellena dinámicamente -->
             </div>
         </main>
@@ -633,6 +676,12 @@
             if (deleteView) {
                 deleteView.classList.add('hidden');
                 deleteView.classList.remove('flex');
+            }
+            
+            const historyView = document.getElementById('history-view');
+            if (historyView) {
+                historyView.classList.add('hidden');
+                historyView.classList.remove('flex');
             }
             
             // Actualizar estado del botón flotante del carrito según la ruta
@@ -770,6 +819,14 @@
                     cartView.classList.remove('hidden');
                     cartView.classList.add('flex');
                 }
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            } else if (hash === '#historial') {
+                const historyView = document.getElementById('history-view');
+                if (historyView) {
+                    historyView.classList.remove('hidden');
+                    historyView.classList.add('flex');
+                }
+                loadSalesHistory();
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else {
                 catalogView.classList.remove('hidden');
@@ -1024,7 +1081,10 @@
             backToCatalogFromCart();
         }
 
-        // Procesar la venta y rebajar el stock en Supabase
+            backToCatalogFromCart();
+        }
+
+        // Procesar la venta, registrarla en la tabla de ventas e ir a rebajar el stock en Supabase
         async function checkoutCart() {
             if (cart.length === 0) return;
 
@@ -1039,7 +1099,7 @@
                 const productIds = cart.map(item => item.id);
                 const { data: currentProducts, error: fetchError } = await _supabase
                     .from('productos')
-                    .select('id, nombre, stock')
+                    .select('id, nombre, stock, marca')
                     .in('id', productIds);
 
                 if (fetchError) throw fetchError;
@@ -1061,7 +1121,8 @@
                     } else {
                         stockUpdates.push({
                             id: item.id,
-                            newStock: currentStock - item.quantity
+                            newStock: currentStock - item.quantity,
+                            marca: dbProduct ? dbProduct.marca : null
                         });
                     }
                 });
@@ -1080,6 +1141,27 @@
                     return;
                 }
 
+                // Preparar registros para la tabla 'ventas'
+                const salesData = cart.map(item => {
+                    const price = parseFloat(item.precio_usd) || 0;
+                    const priceVes = price * exchangeRate;
+                    const priceDivisa = parseFloat(item.precio_divisa) || 0;
+                    const qty = parseFloat(item.quantity) || 1;
+                    const matchingUpdate = stockUpdates.find(u => u.id === item.id);
+
+                    return {
+                        producto_id: item.id,
+                        nombre_producto: item.nombre,
+                        marca_producto: matchingUpdate ? matchingUpdate.marca : null,
+                        cantidad: qty,
+                        precio_usd: price,
+                        precio_ves: priceVes,
+                        precio_divisa: priceDivisa,
+                        total_usd: price * qty,
+                        total_ves: priceVes * qty
+                    };
+                });
+
                 // 3. Ejecutar las actualizaciones de stock en Supabase
                 const updatePromises = stockUpdates.map(update => {
                     return _supabase
@@ -1088,9 +1170,14 @@
                         .eq('id', update.id);
                 });
 
-                const results = await Promise.all(updatePromises);
+                // Registrar las ventas en la nueva tabla 'ventas'
+                const insertSalesPromise = _supabase
+                    .from('ventas')
+                    .insert(salesData);
+
+                const results = await Promise.all([...updatePromises, insertSalesPromise]);
                 
-                // Verificar si hubo algún error en las actualizaciones
+                // Verificar si hubo algún error
                 const failedUpdate = results.find(res => res.error);
                 if (failedUpdate) throw failedUpdate.error;
 
@@ -1108,7 +1195,7 @@
                 renderCatalog();
                 backToCatalogFromCart();
                 
-                alert('¡Venta realizada con éxito! El stock ha sido rebajado en Supabase.');
+                alert('¡Venta realizada con éxito! El stock ha sido rebajado y la venta ha sido registrada.');
             } catch (err) {
                 console.error('Error al procesar la venta en Supabase:', err);
                 alert('No se pudo procesar la venta: ' + err.message);
@@ -1118,6 +1205,182 @@
                     confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
                 }
             }
+        }
+
+        // --- GESTIÓN DE HISTORIAL DE VENTAS ---
+        let salesHistory = [];
+
+        async function loadSalesHistory() {
+            const container = document.getElementById('history-items-container');
+            const countLabel = document.getElementById('history-count-label');
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="flex flex-col justify-center items-center py-16">
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-rose-500"></div>
+                    <p class="mt-3 text-slate-500 text-xs font-medium">Cargando historial de ventas...</p>
+                </div>
+            `;
+            if (countLabel) countLabel.textContent = "Cargando...";
+
+            try {
+                const { data, error } = await _supabase
+                    .from('ventas')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                salesHistory = data || [];
+                
+                if (countLabel) {
+                    countLabel.textContent = `Ventas registradas: ${salesHistory.length}`;
+                }
+
+                if (salesHistory.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-16 text-center bg-white border border-slate-100 rounded-2xl shadow-sm px-6">
+                            <div class="text-slate-300 text-5xl mb-4">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-700">No hay ventas registradas</h3>
+                            <p class="text-slate-500 text-sm mt-1 max-w-xs mx-auto">Las ventas que realices desde tu carrito se mostrarán aquí.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                salesHistory.forEach(sale => {
+                    const date = new Date(sale.created_at);
+                    const formattedDate = date.toLocaleString('es-VE', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit',
+                        hour12: true 
+                    });
+
+                    const brandBadge = sale.marca_producto ? `
+                        <span class="inline-block bg-slate-100 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider select-none mb-1">
+                            ${sale.marca_producto}
+                        </span>
+                    ` : '';
+
+                    html += `
+                    <div class="p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div class="min-w-0 pr-3">
+                                ${brandBadge}
+                                <h4 class="font-bold text-slate-800 text-sm truncate" title="${sale.nombre_producto}">${sale.nombre_producto}</h4>
+                                <span class="text-[10px] text-slate-400 font-semibold block mt-0.5"><i class="fas fa-clock mr-1"></i>${formattedDate}</span>
+                            </div>
+                            
+                            <!-- Botón Devolver -->
+                            <button onclick="returnProduct(${sale.id}, ${sale.producto_id || 'null'}, ${sale.cantidad}, '${sale.nombre_producto.replace(/'/g, "\\'")}')" class="flex-shrink-0 text-xs font-bold px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 hover:border-rose-200 rounded-xl transition-all flex items-center space-x-1" title="Devolver producto al inventario">
+                                <i class="fas fa-undo text-[10px]"></i>
+                                <span>Devolver</span>
+                            </button>
+                        </div>
+                        
+                        <div class="border-t border-slate-100/60 pt-2 flex flex-wrap justify-between items-baseline text-xs gap-y-2">
+                            <div>
+                                <span class="text-slate-400 font-medium">Cant:</span>
+                                <span class="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg">${sale.cantidad}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-slate-400 font-medium">Total:</span>
+                                <span class="font-black text-rose-600 ml-1">
+                                    $${parseFloat(sale.total_usd).toFixed(2)} USD <span class="text-slate-300">/</span> ${formatBS(sale.total_ves)} BS.
+                                </span>
+                                ${parseFloat(sale.precio_divisa) > 0 ? `
+                                    <span class="block text-[10px] text-amber-600 font-bold mt-0.5"><i class="fas fa-wallet mr-1 text-[8px]"></i>Total Divisa: $${(parseFloat(sale.precio_divisa) * sale.cantidad).toFixed(2)} USD</span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error('Error al cargar historial de ventas:', err);
+                container.innerHTML = `
+                    <div class="text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm px-6">
+                        <div class="text-rose-500 text-5xl mb-4">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-700">Error al cargar historial</h3>
+                        <p class="text-slate-500 text-sm mt-1">Revisa tu conexión y vuelve a intentarlo.</p>
+                        <button onclick="loadSalesHistory()" class="mt-4 px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-xs">Reintentar</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function returnProduct(saleId, productId, quantity, productName) {
+            if (!confirm(`¿Estás seguro de que deseas devolver "${productName}"?\nSe reincorporarán ${quantity} unidad(es) al stock y se eliminará esta venta.`)) {
+                return;
+            }
+
+            try {
+                // 1. Si el producto aún existe, buscar su stock actual y actualizarlo en Supabase
+                if (productId) {
+                    const { data: dbProduct, error: fetchError } = await _supabase
+                        .from('productos')
+                        .select('stock')
+                        .eq('id', productId)
+                        .maybeSingle();
+
+                    if (fetchError) throw fetchError;
+
+                    if (dbProduct) {
+                        const currentStock = parseInt(dbProduct.stock, 10) || 0;
+                        const newStock = currentStock + quantity;
+
+                        const { error: stockError } = await _supabase
+                            .from('productos')
+                            .update({ stock: newStock })
+                            .eq('id', productId);
+
+                        if (stockError) throw stockError;
+
+                        // Actualizar localmente si está cargado
+                        const localIndex = fullInventory.findIndex(p => p.id === productId);
+                        if (localIndex !== -1) {
+                            fullInventory[localIndex].stock = newStock;
+                        }
+                    }
+                }
+
+                // 2. Eliminar el registro de venta
+                const { error: deleteError } = await _supabase
+                    .from('ventas')
+                    .delete()
+                    .eq('id', saleId);
+
+                if (deleteError) throw deleteError;
+
+                // 3. Éxito: recargar historial y catálogo
+                renderCatalog();
+                await loadSalesHistory();
+                alert('Devolución completada con éxito. El stock ha sido restituido.');
+            } catch (err) {
+                console.error('Error al procesar la devolución:', err);
+                alert('No se pudo procesar la devolución: ' + err.message);
+            }
+        }
+
+        // Navegación Historial
+        function navigateToHistory() {
+            window.location.hash = '#historial';
+        }
+
+        function backToCartFromHistory() {
+            window.location.hash = '#carrito';
         }
 
         // Actualizar visualmente el estado del botón del carrito de una tarjeta
@@ -1311,30 +1574,12 @@
 
         // Navegar a la Vista del Carrito (Página Propia)
         function navigateToCart() {
-            renderCartItems();
-            
-            // Ocultar catálogo y formulario
-            document.getElementById('catalog-view').classList.add('hidden');
-            document.getElementById('form-view').classList.add('hidden');
-            
-            // Mostrar la vista del carrito
-            const cartView = document.getElementById('cart-view');
-            cartView.classList.remove('hidden');
-            cartView.classList.add('flex');
-            
-            // Hacer scroll hacia arriba automáticamente
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            window.location.hash = '#carrito';
         }
 
         // Volver al Catálogo desde la Vista del Carrito
         function backToCatalogFromCart() {
-            // Ocultar carrito
-            const cartView = document.getElementById('cart-view');
-            cartView.classList.add('hidden');
-            cartView.classList.remove('flex');
-            
-            // Mostrar catálogo
-            document.getElementById('catalog-view').classList.remove('hidden');
+            window.location.hash = '';
         }
 
         searchScannerBtn.addEventListener('click', () => startCameraScanner('search'));
