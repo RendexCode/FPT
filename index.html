@@ -551,6 +551,39 @@
         </main>
     </div>
 
+    <!-- MODAL: SELECCIONAR MÉTODO DE PAGO -->
+    <div id="payment-method-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-sm w-full p-6 flex flex-col overflow-hidden relative transform scale-95 transition-all duration-300">
+            <h3 class="text-lg font-black text-slate-800 text-center mb-1 flex items-center justify-center space-x-2">
+                <i class="fas fa-wallet text-rose-500"></i>
+                <span>Método de Venta</span>
+            </h3>
+            <p class="text-xs text-slate-400 text-center mb-6">Selecciona el método utilizado para recibir este pago en Bolívares (BCV).</p>
+            
+            <!-- Botones de Métodos -->
+            <div class="flex flex-col space-y-3">
+                <button onclick="confirmCheckoutWithMethod('PUNTO')" class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-indigo-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
+                    <i class="fas fa-credit-card text-base"></i>
+                    <span>PUNTO DE VENTA</span>
+                </button>
+                
+                <button onclick="confirmCheckoutWithMethod('EFECTIVO')" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-emerald-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
+                    <i class="fas fa-money-bill-wave text-base"></i>
+                    <span>EFECTIVO BS.</span>
+                </button>
+                
+                <button onclick="confirmCheckoutWithMethod('PAGO MOVIL')" class="w-full py-3.5 px-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-pink-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
+                    <i class="fas fa-mobile-alt text-base"></i>
+                    <span>PAGO MÓVIL</span>
+                </button>
+            </div>
+            
+            <button onclick="closePaymentMethodModal()" class="mt-6 text-xs font-bold text-slate-400 hover:text-slate-600 text-center transition-colors">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
     <!-- SUPABASE CLIENT JS LIBRARY -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -1081,10 +1114,47 @@
             backToCatalogFromCart();
         }
 
-        // Procesar la venta, registrarla en la tabla de ventas e ir a rebajar el stock en Supabase
-        async function checkoutCart() {
+        // Función principal al hacer clic en Vender
+        function checkoutCart() {
             if (cart.length === 0) return;
+            
+            if (cartPriceMode === 'divisa') {
+                executeCheckout('DIVISA');
+            } else {
+                openPaymentMethodModal();
+            }
+        }
 
+        function openPaymentMethodModal() {
+            const modal = document.getElementById('payment-method-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.offsetHeight; // Forzar reflujo
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }
+        }
+
+        function closePaymentMethodModal() {
+            const modal = document.getElementById('payment-method-modal');
+            if (modal) {
+                modal.querySelector('.transform').classList.remove('scale-100');
+                modal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 150);
+            }
+        }
+
+        function confirmCheckoutWithMethod(method) {
+            closePaymentMethodModal();
+            executeCheckout(method);
+        }
+
+        // Procesar la venta con el método seleccionado, registrarla en ventas e ir a rebajar el stock en Supabase
+        async function executeCheckout(paymentMethod) {
             const confirmBtn = document.getElementById('btn-vender-carrito');
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -1155,7 +1225,8 @@
                         precio_ves: priceVes,
                         precio_divisa: priceDivisa,
                         total_usd: price * qty,
-                        total_ves: priceVes * qty
+                        total_ves: priceVes * qty,
+                        metodo_pago: paymentMethod
                     };
                 });
 
@@ -1261,16 +1332,27 @@
                     });
 
                     const brandBadge = sale.marca_producto ? `
-                        <span class="inline-block bg-slate-100 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider select-none mb-1">
+                        <span class="inline-block bg-slate-100 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider select-none">
                             ${sale.marca_producto}
                         </span>
                     ` : '';
+
+                    const methodBadge = sale.metodo_pago ? (
+                        sale.metodo_pago === 'PUNTO' ? `<span class="inline-block bg-blue-50 text-blue-600 border border-blue-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-credit-card mr-1 text-[7px]"></i>Punto</span>` :
+                        sale.metodo_pago === 'EFECTIVO' ? `<span class="inline-block bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-money-bill-wave mr-1 text-[7px]"></i>Efectivo</span>` :
+                        sale.metodo_pago === 'PAGO MOVIL' ? `<span class="inline-block bg-purple-50 text-purple-600 border border-purple-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-mobile-alt mr-1 text-[7px]"></i>Pago Móvil</span>` :
+                        sale.metodo_pago === 'DIVISA' ? `<span class="inline-block bg-amber-50 text-amber-600 border border-amber-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-wallet mr-1 text-[7px]"></i>Divisa</span>` :
+                        `<span class="inline-block bg-slate-50 text-slate-600 border border-slate-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase">${sale.metodo_pago}</span>`
+                    ) : '';
 
                     html += `
                     <div class="p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col space-y-3">
                         <div class="flex justify-between items-start">
                             <div class="min-w-0 pr-3">
-                                ${brandBadge}
+                                <div class="flex flex-wrap gap-1 mb-1 items-center">
+                                    ${brandBadge}
+                                    ${methodBadge}
+                                </div>
                                 <h4 class="font-bold text-slate-800 text-sm truncate" title="${sale.nombre_producto}">${sale.nombre_producto}</h4>
                                 <span class="text-[10px] text-slate-400 font-semibold block mt-0.5"><i class="fas fa-clock mr-1"></i>${formattedDate}</span>
                             </div>
