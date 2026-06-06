@@ -1072,6 +1072,7 @@
                 cart.push({
                     id: product.id,
                     nombre: product.nombre,
+                    marca: product.marca,
                     precio_usd: parseFloat(product.precio_usd) || 0,
                     precio_divisa: parseFloat(product.precio_divisa) || 0,
                     quantity: 1
@@ -1400,7 +1401,7 @@
                                     ${methodBadge}
                                 </div>
                                 <h4 class="font-bold text-slate-800 text-sm truncate" title="${sale.nombre_producto}">${sale.nombre_producto}</h4>
-                                <span class="text-[10px] text-slate-400 font-semibold block mt-0.5"><i class="fas fa-clock mr-1"></i>${formattedDate}</span>
+                                <span class="text-xs text-slate-500 font-semibold block mt-1"><i class="fas fa-clock mr-1"></i>${formattedDate}</span>
                             </div>
                             
                             <!-- Botón Devolver -->
@@ -1651,9 +1652,18 @@
                     </div>`;
                 }
 
+                const dbProd = fullInventory.find(p => p.id === item.id);
+                const itemMarca = item.marca || (dbProd ? dbProd.marca : null);
+                const brandBadge = itemMarca ? `
+                    <span class="inline-block bg-slate-100 text-slate-600 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider select-none mb-1">
+                        <i class="fas fa-tag mr-1 text-[7px] sm:text-[8px]"></i>${itemMarca}
+                    </span>
+                ` : '';
+
                 html += `
                 <div class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300">
                     <div class="flex-grow min-w-0 pr-3">
+                        ${brandBadge}
                         <h4 class="font-bold text-slate-800 text-sm truncate" title="${item.nombre}">${item.nombre}</h4>
                         ${priceEditorHTML}
                     </div>
