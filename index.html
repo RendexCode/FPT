@@ -2074,16 +2074,16 @@
                         <!-- LÍNEA DE SEPARACIÓN -->
                         <div class="border-t border-slate-100"></div>
 
+                        <!-- Stock Tag en la Esquina Inferior Izquierda -->
+                        <span class="absolute bottom-0 left-0 ${outOfStock ? 'bg-red-600' : 'bg-green-600'} text-white text-[9px] sm:text-[10px] font-black px-3.5 py-1.5 rounded-tr-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-bottom-left transition-all duration-300">
+                            <i class="fas fa-cubes mr-1 text-[8px] sm:text-[9px]"></i>
+                            <span>${outOfStock ? 'Agotado' : `Stock: ${stockVal}`}</span>
+                        </span>
+
                         <!-- PARTE INFERIOR (Footer / Stats Bar) -->
                         <div class="bg-slate-50/50 px-3 sm:px-4 py-2.5 flex items-center justify-between text-xs">
-                            <!-- Stock Status (Alineado con la foto) -->
-                            <div class="w-16 sm:w-20 flex-shrink-0 flex items-center space-x-1">
-                                <i class="fas fa-cubes text-slate-400"></i>
-                                ${outOfStock 
-                                    ? `<span class="font-extrabold text-rose-600 bg-rose-50 px-1 py-0.5 rounded border border-rose-100 text-[9px] sm:text-[10px] truncate" title="Agotado">Agotado</span>` 
-                                    : `<span class="font-extrabold text-slate-600 bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-[9px] sm:text-[10px] truncate" title="Stock: ${stockVal}">Stock: ${stockVal}</span>`
-                                }
-                            </div>
+                            <!-- Spacer para la etiqueta absoluta de Stock -->
+                            <div class="w-16 sm:w-20 flex-shrink-0"></div>
 
                             <!-- Botones de Acción (Editar, Eliminar y Carrito) -->
                             <div class="flex items-center space-x-1 min-w-0">
