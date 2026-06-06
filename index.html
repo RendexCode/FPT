@@ -728,6 +728,8 @@
                 formTitle.textContent = 'Agregar Nuevo Producto';
                 productForm.reset();
                 productBrandInput.value = '';
+                productCostInput.value = '0';
+                productPercentInput.value = '25';
                 productPriceManualInput.value = '';
                 productPriceAutoInput.value = '';
                 productDivisaPriceManualInput.value = '';
@@ -2272,8 +2274,14 @@
         // --- CÁLCULO DINÁMICO DE PRECIO EN FORMULARIO ---
         function calculatePrice() {
             // El cálculo dinámico automático siempre se ejecuta de fondo para poder comparar ambos precios en tiempo real
-            const cost = parseFloat(productCostInput.value);
-            const percent = parseFloat(productPercentInput.value);
+            let costVal = productCostInput.value.trim();
+            if (costVal === '') costVal = '0';
+            
+            let percentVal = productPercentInput.value.trim();
+            if (percentVal === '') percentVal = '25';
+
+            const cost = parseFloat(costVal);
+            const percent = parseFloat(percentVal);
             
             if (!isNaN(cost) && !isNaN(percent) && percent < 100 && percent >= 0) {
                 const price = cost / (1 - percent / 100);
@@ -2296,6 +2304,20 @@
 
         productCostInput.addEventListener('input', calculatePrice);
         productPercentInput.addEventListener('input', calculatePrice);
+
+        productCostInput.addEventListener('blur', () => {
+            if (productCostInput.value.trim() === '') {
+                productCostInput.value = '0';
+                calculatePrice();
+            }
+        });
+
+        productPercentInput.addEventListener('blur', () => {
+            if (productPercentInput.value.trim() === '') {
+                productPercentInput.value = '25';
+                calculatePrice();
+            }
+        });
 
         // Inicializar listeners de botones de modo
         document.addEventListener('DOMContentLoaded', () => {
