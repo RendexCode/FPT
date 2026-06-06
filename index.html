@@ -71,6 +71,15 @@
             flex-shrink: 0;
             font-size: clamp(12px, 6.5cqw, 18px);
         }
+        /* Ocultar flechas en inputs de tipo número */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col antialiased">
@@ -237,7 +246,7 @@
                             <!-- Cantidad en Stock (debajo de Código de Barra) -->
                             <div>
                                 <label for="product-stock" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Cantidad en Stock</label>
-                                <input type="number" id="product-stock" required min="0" placeholder="0" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                                <input type="number" id="product-stock" required step="any" min="0" placeholder="0" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
                             </div>
 
                             <!-- Foto del Producto -->
@@ -1104,6 +1113,41 @@
             renderCartItems();
         }
 
+        // Actualizar cantidad del item del carrito manualmente
+        function updateCartItemQuantity(productId, value) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex === -1) return;
+
+            const qty = parseFloat(value);
+            if (isNaN(qty) || qty <= 0) {
+                cart.splice(itemIndex, 1);
+            } else {
+                cart[itemIndex].quantity = qty;
+            }
+
+            saveCart();
+            updateProductCardCartState(productId);
+            renderCartItems();
+        }
+
+        // Actualizar precio de item del carrito manualmente
+        function updateCartItemPrice(productId, value) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex === -1) return;
+
+            const price = parseFloat(value);
+            if (isNaN(price) || price < 0) return;
+
+            if (cartPriceMode === 'divisa') {
+                cart[itemIndex].precio_divisa = price;
+            } else {
+                cart[itemIndex].precio_usd = price;
+            }
+
+            saveCart();
+            renderCartItems();
+        }
+
         // Vaciar el carrito
         function clearCart() {
             const oldIds = cart.map(item => item.id);
@@ -1179,7 +1223,7 @@
 
                 cart.forEach(item => {
                     const dbProduct = currentProducts.find(p => p.id === item.id);
-                    const currentStock = dbProduct ? parseInt(dbProduct.stock, 10) || 0 : 0;
+                    const currentStock = dbProduct ? parseFloat(dbProduct.stock) || 0 : 0;
                     
                     if (currentStock < item.quantity) {
                         insufficientStockItems.push({
@@ -1199,7 +1243,7 @@
                 // Si hay stock insuficiente, mostrar alerta y cancelar
                 if (insufficientStockItems.length > 0) {
                     const itemsList = insufficientStockItems
-                        .map(i => `- ${i.nombre}: Solicitado ${i.requested}, Disponible ${i.currentStock}`)
+                        .map(i => `- ${i.nombre}: Solicitado ${formatQuantity(i.requested)}, Disponible ${formatQuantity(i.currentStock)}`)
                         .join('\n');
                     alert(`No hay suficiente stock para completar la venta:\n\n${itemsList}`);
                     
@@ -1369,7 +1413,7 @@
                         <div class="border-t border-slate-100/60 pt-2 flex flex-wrap justify-between items-baseline text-xs gap-y-2">
                             <div>
                                 <span class="text-slate-400 font-medium">Cant:</span>
-                                <span class="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg">${sale.cantidad}</span>
+                                <span class="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg">${formatQuantity(sale.cantidad)}</span>
                             </div>
                             <div class="text-right">
                                 <span class="text-slate-400 font-medium">Total:</span>
@@ -1419,7 +1463,7 @@
                     if (fetchError) throw fetchError;
 
                     if (dbProduct) {
-                        const currentStock = parseInt(dbProduct.stock, 10) || 0;
+                        const currentStock = parseFloat(dbProduct.stock) || 0;
                         const newStock = currentStock + quantity;
 
                         const { error: stockError } = await _supabase
@@ -1472,7 +1516,7 @@
             const cartItem = cart.find(item => item.id === productId);
             if (cartItem) {
                 cardBtn.className = "flex items-center justify-center px-2.5 py-1.5 rounded-lg transition-all duration-200 border font-bold bg-rose-100 text-rose-600 border-rose-200 hover:bg-rose-200 min-w-[28px]";
-                cardBtn.innerHTML = `<span class="cart-btn-badge text-xs font-black">${cartItem.quantity}</span>`;
+                cardBtn.innerHTML = `<span class="cart-btn-badge text-xs font-black">${formatQuantity(cartItem.quantity)}</span>`;
             } else {
                 cardBtn.className = "flex items-center justify-center px-2.5 py-1.5 rounded-lg transition-all duration-200 border font-bold bg-white text-slate-500 border-slate-200 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 min-w-[28px]";
                 cardBtn.innerHTML = `<i class="fas fa-shopping-cart text-[10px]"></i>`;
@@ -1490,7 +1534,7 @@
             
             if (totalItems > 0) {
                 floatingBtn.style.setProperty('display', 'flex', 'important');
-                floatingBadge.textContent = totalItems;
+                floatingBadge.textContent = formatQuantity(totalItems);
             } else {
                 floatingBtn.style.setProperty('display', 'none', 'important');
             }
@@ -1582,34 +1626,46 @@
                 const itemTotalUsd = itemPrice * item.quantity;
                 totalUsd += itemTotalUsd;
                 
-                let priceInfo = '';
+                let priceEditorHTML = '';
                 if (cartPriceMode === 'divisa') {
                     if (hasDivisaPrice) {
-                        priceInfo = `$${itemPrice.toFixed(2)} USD c/u`;
+                        priceEditorHTML = `
+                        <div class="flex items-center bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 shadow-sm w-fit mt-1">
+                            <span class="text-[10px] text-slate-400 font-bold mr-1">$</span>
+                            <input type="number" step="0.01" min="0" value="${itemPrice.toFixed(2)}" onchange="updateCartItemPrice(${item.id}, this.value)" class="w-14 bg-transparent text-slate-800 font-bold focus:outline-none text-[11px] text-left py-0" title="Editar precio unitario">
+                            <span class="text-[9px] text-slate-400 font-semibold uppercase ml-1">USD (Divisa)</span>
+                        </div>`;
                     } else {
-                        priceInfo = `<span class="text-rose-500 font-bold flex items-center mt-0.5 text-xs"><i class="fas fa-exclamation-triangle mr-1.5 text-[10px] animate-pulse"></i>Sin precio en divisa</span>`;
+                        priceEditorHTML = `<span class="text-rose-500 font-bold flex items-center mt-1 text-xs"><i class="fas fa-exclamation-triangle mr-1.5 text-[10px] animate-pulse"></i>Sin precio en divisa</span>`;
                     }
                 } else {
-                    priceInfo = `$${itemPrice.toFixed(2)} USD / ${formatBS((itemPrice * exchangeRate).toFixed(2))} BS. c/u`;
+                    priceEditorHTML = `
+                    <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                        <div class="flex items-center bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 shadow-sm">
+                            <span class="text-[10px] text-slate-400 font-bold mr-1">$</span>
+                            <input type="number" step="0.01" min="0" value="${itemPrice.toFixed(2)}" onchange="updateCartItemPrice(${item.id}, this.value)" class="w-14 bg-transparent text-slate-800 font-bold focus:outline-none text-[11px] text-left py-0" title="Editar precio unitario">
+                            <span class="text-[9px] text-slate-400 font-semibold uppercase ml-1">USD</span>
+                        </div>
+                        <span class="text-[10px] text-slate-300 font-semibold px-0.5">/</span>
+                        <span class="text-[10px] text-rose-500 font-bold">${formatBS((itemPrice * exchangeRate).toFixed(2))} BS. c/u</span>
+                    </div>`;
                 }
 
                 html += `
                 <div class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300">
                     <div class="flex-grow min-w-0 pr-3">
                         <h4 class="font-bold text-slate-800 text-sm truncate" title="${item.nombre}">${item.nombre}</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">
-                            ${priceInfo}
-                        </p>
+                        ${priceEditorHTML}
                     </div>
                     
                     <div class="flex items-center space-x-3 flex-shrink-0">
                         <!-- Controles de cantidad -->
-                        <div class="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1">
-                            <button onclick="adjustCartItemQuantity(${item.id}, -1)" class="w-6.5 h-6.5 flex items-center justify-center text-slate-500 hover:text-rose-500 font-extrabold hover:bg-white rounded transition-colors text-[10px]">
+                        <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5">
+                            <button onclick="adjustCartItemQuantity(${item.id}, -1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-rose-500 font-extrabold hover:bg-white rounded transition-colors text-[10px]" title="Restar 1">
                                 <i class="fas fa-minus"></i>
                             </button>
-                            <span class="text-[11px] font-black text-slate-800 w-5 text-center">${item.quantity}</span>
-                            <button onclick="adjustCartItemQuantity(${item.id}, 1)" class="w-6.5 h-6.5 flex items-center justify-center text-slate-500 hover:text-rose-500 font-extrabold hover:bg-white rounded transition-colors text-[10px]">
+                            <input type="number" step="any" min="0" value="${item.quantity}" onchange="updateCartItemQuantity(${item.id}, this.value)" class="w-12 bg-white border border-slate-200 rounded text-center focus:outline-none text-[11px] font-bold text-slate-800 py-0.5" title="Cantidad">
+                            <button onclick="adjustCartItemQuantity(${item.id}, 1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-rose-500 font-extrabold hover:bg-white rounded transition-colors text-[10px]" title="Sumar 1">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -2076,6 +2132,13 @@
             return parts.join(',');
         }
 
+        // --- FORMATEADOR DE CANTIDADES (Soporta decimales de hasta 3 dígitos, limpia ceros a la derecha) ---
+        function formatQuantity(qty) {
+            const num = parseFloat(qty);
+            if (isNaN(num)) return '0';
+            return Number.isInteger(num) ? num.toString() : parseFloat(num.toFixed(3)).toString();
+        }
+
         // --- RENDERIZADO DE CATÁLOGO (Integrado con marquesina inteligente de nombres) ---
         function renderCatalog() {
             productsContainer.innerHTML = '';
@@ -2161,7 +2224,7 @@
                         <!-- Stock Tag en la Esquina Inferior Izquierda -->
                         <span class="absolute bottom-0 left-0 ${outOfStock ? 'bg-red-600' : 'bg-green-600'} text-white text-[9px] sm:text-[10px] font-black px-3.5 py-1.5 rounded-tr-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-bottom-left transition-all duration-300">
                             <i class="fas fa-cubes mr-1 text-[8px] sm:text-[9px]"></i>
-                            <span>${outOfStock ? 'Agotado' : `Stock: ${stockVal}`}</span>
+                            <span>${outOfStock ? 'Agotado' : `Stock: ${formatQuantity(stockVal)}`}</span>
                         </span>
 
                         <!-- PARTE INFERIOR (Footer / Stats Bar) -->
@@ -2351,7 +2414,7 @@
             const code = productCodeInput.value.trim() || null;
             const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2)) || 0;
             const percent = parseFloat(productPercentInput.value) || 0;
-            const stock = parseInt(productStockInput.value, 10) || 0;
+            const stock = parseFloat(productStockInput.value) || 0;
 
             // Precios según el modo seleccionado (manual o auto)
             let price = 0;
