@@ -121,7 +121,7 @@
 
         <!-- SEGUNDA BARRA: BUSCADOR (Posicionado de forma dinámica mediante ResizeObserver) -->
         <div id="search-bar-container" class="bg-white border-b border-slate-100 shadow-sm sticky top-[76px] z-30 px-4 py-3 sm:px-8">
-            <div class="max-w-3xl mx-auto flex items-center space-x-3">
+            <div class="max-w-3xl mx-auto flex items-center space-x-2 sm:space-x-3">
                 <div class="relative flex-grow flex items-center">
                     <div class="absolute left-4 text-slate-400 pointer-events-none">
                         <i class="fas fa-search"></i>
@@ -137,6 +137,11 @@
                     </button>
                 </div>
                 
+                <!-- Select de Marca -->
+                <select id="brand-select" class="flex-shrink-0 px-3 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-xs sm:text-sm text-slate-700 font-bold transition-all duration-200 max-w-[110px] sm:max-w-[160px] cursor-pointer shadow-sm">
+                    <option value="">Todas las marcas</option>
+                </select>
+
                 <!-- BOTÓN DEL CARRITO EN LA BARRA DE BÚSQUEDA (Se oculta automáticamente al cambiar de página) -->
                 <button id="floating-cart-btn" class="flex-shrink-0 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95 transition-all duration-300 relative hidden" onclick="navigateToCart()" title="Ver carrito">
                     <i class="fas fa-shopping-cart text-base sm:text-lg"></i>
@@ -208,6 +213,12 @@
                             <div>
                                 <label for="product-name" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Nombre del Producto</label>
                                 <input type="text" id="product-name" required placeholder="Ej. Cable coaxial RG6" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                            </div>
+
+                            <!-- Marca del Producto -->
+                            <div>
+                                <label for="product-brand" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Marca</label>
+                                <input type="text" id="product-brand" placeholder="Ej. Bticino, Phillips (Opcional)" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
                             </div>
 
                             <!-- Código de Barra con Lector de Cámara -->
@@ -516,6 +527,7 @@
         let isLoadingMore = false;
         let hasMoreProducts = true;
         let currentSearchQuery = '';
+        let currentBrandFilter = '';
         let infiniteScrollObserver = null;
 
         // Variables Lector de Barras
@@ -533,6 +545,7 @@
         
         // Buscador
         const searchInput = document.getElementById('search-input');
+        const brandSelect = document.getElementById('brand-select');
         const searchScannerBtn = document.getElementById('search-scanner-btn');
         const clearSearchBtn = document.getElementById('clear-search-btn');
         const productsContainer = document.getElementById('products-container');
@@ -550,6 +563,7 @@
         
         // Formulario Inputs
         const productNameInput = document.getElementById('product-name');
+        const productBrandInput = document.getElementById('product-brand');
         const productCodeInput = document.getElementById('product-code');
         const formScannerBtn = document.getElementById('form-scanner-btn');
         const productCostInput = document.getElementById('product-cost');
@@ -623,6 +637,7 @@
                 editingProduct = null;
                 formTitle.textContent = 'Agregar Nuevo Producto';
                 productForm.reset();
+                productBrandInput.value = '';
                 productPriceManualInput.value = '';
                 productPriceAutoInput.value = '';
                 productDivisaPriceManualInput.value = '';
@@ -661,6 +676,7 @@
                 if (editingProduct) {
                     formTitle.textContent = 'Editar Producto';
                     productNameInput.value = editingProduct.nombre;
+                    productBrandInput.value = editingProduct.marca || '';
                     productCodeInput.value = editingProduct.codigo || '';
                     productCostInput.value = editingProduct.costo_usd || 0;
                     
@@ -1312,6 +1328,35 @@
             }
         }
 
+        // Cargar marcas únicas disponibles en la base de datos
+        async function loadBrandOptions() {
+            try {
+                const { data, error } = await _supabase
+                    .from('productos')
+                    .select('marca')
+                    .not('marca', 'is', null)
+                    .neq('marca', '');
+                    
+                if (error) throw error;
+                
+                const brands = [...new Set(data.map(p => p.marca.trim()))].sort((a, b) => a.localeCompare(b));
+                
+                if (brandSelect) {
+                    const currentValue = brandSelect.value;
+                    brandSelect.innerHTML = '<option value="">Todas las marcas</option>';
+                    brands.forEach(brand => {
+                        const opt = document.createElement('option');
+                        opt.value = brand;
+                        opt.textContent = brand;
+                        brandSelect.appendChild(opt);
+                    });
+                    brandSelect.value = currentValue;
+                }
+            } catch (err) {
+                console.error('Error al cargar marcas para el buscador:', err);
+            }
+        }
+
         // Búsqueda inteligente con paginación y scroll infinito
         async function loadInventory(searchQuery = '', append = false) {
             if (isLoadingMore && append) return;
@@ -1345,6 +1390,10 @@
                     queryBuilder = queryBuilder.or(`nombre.ilike.%${currentSearchQuery}%,codigo.ilike.%${currentSearchQuery}%`);
                 }
 
+                if (currentBrandFilter) {
+                    queryBuilder = queryBuilder.eq('marca', currentBrandFilter);
+                }
+
                 const { data, error } = await queryBuilder
                     .order('nombre', { ascending: true })
                     .range(from, to);
@@ -1368,7 +1417,7 @@
                 // Ocultar spinner del scroll infinito
                 document.getElementById('infinite-scroll-spinner').classList.add('hidden');
 
-                if (currentSearchQuery) {
+                if (currentSearchQuery || currentBrandFilter) {
                     totalProductsCount.textContent = `Resultados encontrados: ${fullInventory.length}`;
                 } else {
                     await fetchAbsoluteTotalCount();
@@ -1423,8 +1472,9 @@
             const newRow = payload.new;
             const oldRow = payload.old;
 
-            // Función auxiliar para comprobar si un producto coincide con la búsqueda activa
+            // Función auxiliar para comprobar si un producto coincide con la búsqueda activa y el filtro de marca
             const matchesSearch = (product) => {
+                if (currentBrandFilter && product.marca !== currentBrandFilter) return false;
                 if (!currentSearchQuery) return true;
                 const query = currentSearchQuery.toLowerCase();
                 const nameMatch = product.nombre && product.nombre.toLowerCase().includes(query);
@@ -1524,6 +1574,7 @@
                     renderCartItems();
                 }
             }
+            loadBrandOptions();
         }
 
         function initRealtimeSubscriptions() {
@@ -1570,6 +1621,7 @@
             loadBusinessName();
             loadExchangeRate();
             loadInventory();
+            loadBrandOptions();
             initRealtimeSubscriptions();
             initDeleteHoldEvents();
         });
@@ -1631,7 +1683,11 @@
                                 <div class="scroll-title-container">
                                     <h3 class="scroll-title text-base sm:text-lg font-bold text-slate-800 tracking-tight group-hover:text-rose-500 transition-colors duration-200">${product.nombre}</h3>
                                 </div>
-                                ${product.codigo ? `<p class="text-[10px] font-bold text-slate-400 mt-1"><i class="fas fa-barcode mr-1"></i>${product.codigo}</p>` : ''}
+                                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                    ${product.codigo ? `<span class="text-[10px] font-bold text-slate-400"><i class="fas fa-barcode mr-1"></i>${product.codigo}</span>` : ''}
+                                    ${product.codigo && product.marca ? `<span class="text-slate-300 font-semibold px-0.5">•</span>` : ''}
+                                    ${product.marca ? `<span class="text-[10px] font-extrabold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-100/50 uppercase tracking-wider"><i class="fas fa-tag mr-1 text-[9px]"></i>${product.marca}</span>` : ''}
+                                </div>
                                 
                                 <!-- Precios destacados -->
                                 <div class="price-row">
@@ -1700,8 +1756,17 @@
 
         searchInput.addEventListener('input', handleSearch);
         
+        brandSelect.addEventListener('change', () => {
+            currentBrandFilter = brandSelect.value;
+            loadInventory(searchInput.value.trim());
+        });
+        
         clearSearchBtn.addEventListener('click', () => {
             searchInput.value = '';
+            if (brandSelect) {
+                brandSelect.value = '';
+            }
+            currentBrandFilter = '';
             loadInventory('');
             searchInput.focus();
         });
@@ -1815,6 +1880,7 @@
             e.preventDefault();
 
             const name = productNameInput.value.trim();
+            const brand = productBrandInput.value.trim() || null;
             const code = productCodeInput.value.trim() || null;
             const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2)) || 0;
             const percent = parseFloat(productPercentInput.value) || 0;
@@ -1840,6 +1906,7 @@
 
             const productData = {
                 nombre: name,
+                marca: brand,
                 codigo: code,
                 costo_usd: cost,
                 precio_usd: price,
@@ -1886,6 +1953,7 @@
                     }
                 }
                 
+                await loadBrandOptions();
                 window.location.hash = '';
             } catch (err) {
                 console.error('Error al guardar producto en Supabase:', err);
