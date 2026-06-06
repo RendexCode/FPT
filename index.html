@@ -559,6 +559,11 @@
 
         <!-- CONTENIDO DEL HISTORIAL -->
         <main class="flex-grow max-w-2xl w-full mx-auto px-4 py-6 flex flex-col min-h-0 overflow-hidden space-y-4">
+            <!-- Totales por Método de Pago -->
+            <div id="history-methods-totals-container" class="flex-shrink-0">
+                <!-- Rellenado dinámicamente -->
+            </div>
+
             <!-- Totales del historial o resumen simple -->
             <div class="flex-shrink-0 flex items-center justify-between">
                 <h3 id="history-count-label" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cargando ventas...</h3>
@@ -1355,6 +1360,18 @@
             `;
             if (countLabel) countLabel.textContent = "Cargando...";
 
+            const methodsContainer = document.getElementById('history-methods-totals-container');
+            if (methodsContainer) {
+                methodsContainer.innerHTML = `
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-pulse">
+                        <div class="h-[76px] bg-slate-100 rounded-2xl"></div>
+                        <div class="h-[76px] bg-slate-100 rounded-2xl"></div>
+                        <div class="h-[76px] bg-slate-100 rounded-2xl"></div>
+                        <div class="h-[76px] bg-slate-100 rounded-2xl"></div>
+                    </div>
+                `;
+            }
+
             try {
                 const { data, error } = await _supabase
                     .from('ventas')
@@ -1367,6 +1384,76 @@
                 
                 if (countLabel) {
                     countLabel.textContent = `Ventas registradas: ${salesHistory.length}`;
+                }
+
+                // Calcular acumulados por cada método de pago
+                const totalsByMethod = {
+                    'PUNTO': { usd: 0, ves: 0 },
+                    'EFECTIVO': { usd: 0, ves: 0 },
+                    'PAGO MOVIL': { usd: 0, ves: 0 },
+                    'DIVISA': { usd: 0, ves: 0 }
+                };
+
+                salesHistory.forEach(sale => {
+                    const method = sale.metodo_pago;
+                    if (method && totalsByMethod[method]) {
+                        totalsByMethod[method].usd += parseFloat(sale.total_usd) || 0;
+                        totalsByMethod[method].ves += parseFloat(sale.total_ves) || 0;
+                    }
+                });
+
+                if (methodsContainer) {
+                    methodsContainer.innerHTML = `
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <!-- Punto -->
+                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
+                            <div class="flex items-center space-x-1.5 text-blue-600 font-bold text-[10px] uppercase tracking-wider">
+                                <i class="fas fa-credit-card text-[9px]"></i>
+                                <span>Punto</span>
+                            </div>
+                            <div class="mt-2 text-left">
+                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['PUNTO'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
+                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['PUNTO'].ves)} BS.</span>
+                            </div>
+                        </div>
+
+                        <!-- Efectivo Bs. -->
+                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
+                            <div class="flex items-center space-x-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
+                                <i class="fas fa-money-bill-wave text-[9px]"></i>
+                                <span>Efectivo Bs.</span>
+                            </div>
+                            <div class="mt-2 text-left">
+                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['EFECTIVO'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
+                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['EFECTIVO'].ves)} BS.</span>
+                            </div>
+                        </div>
+
+                        <!-- Pago Móvil -->
+                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
+                            <div class="flex items-center space-x-1.5 text-purple-600 font-bold text-[10px] uppercase tracking-wider">
+                                <i class="fas fa-mobile-alt text-[9px]"></i>
+                                <span>Pago Móvil</span>
+                            </div>
+                            <div class="mt-2 text-left">
+                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['PAGO MOVIL'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
+                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['PAGO MOVIL'].ves)} BS.</span>
+                            </div>
+                        </div>
+
+                        <!-- Divisa -->
+                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
+                            <div class="flex items-center space-x-1.5 text-amber-600 font-bold text-[10px] uppercase tracking-wider">
+                                <i class="fas fa-wallet text-[9px]"></i>
+                                <span>Divisa</span>
+                            </div>
+                            <div class="mt-2 text-left">
+                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['DIVISA'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
+                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['DIVISA'].ves)} BS.</span>
+                            </div>
+                        </div>
+                    </div>
+                    `;
                 }
 
                 if (salesHistory.length === 0) {
@@ -1451,6 +1538,7 @@
 
             } catch (err) {
                 console.error('Error al cargar historial de ventas:', err);
+                if (methodsContainer) methodsContainer.innerHTML = '';
                 container.innerHTML = `
                     <div class="text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm px-6">
                         <div class="text-rose-500 text-5xl mb-4">
