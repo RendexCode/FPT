@@ -314,11 +314,17 @@
                                         <div class="grid grid-cols-2 gap-4">
                                             <div>
                                                 <input type="number" id="product-price-manual" step="0.01" placeholder="Manual" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
-                                                <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Manual</span>
+                                                <div class="flex justify-between items-center mt-1">
+                                                    <span class="text-[9px] text-slate-400 font-semibold uppercase">Manual</span>
+                                                    <span id="product-price-manual-ves" class="text-[10px] text-rose-500 font-black">0,00 BS.</span>
+                                                </div>
                                             </div>
                                             <div>
                                                 <input type="number" id="product-price-auto" step="0.01" readonly placeholder="Calculado" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200">
-                                                <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Autocalculado</span>
+                                                <div class="flex justify-between items-center mt-1">
+                                                    <span class="text-[9px] text-slate-400 font-semibold uppercase">Autocalculado</span>
+                                                    <span id="product-price-auto-ves" class="text-[10px] text-rose-500 font-black">0,00 BS.</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -329,11 +335,17 @@
                                         <div class="grid grid-cols-2 gap-4">
                                             <div>
                                                 <input type="number" id="product-divisa-price-manual" step="0.01" placeholder="Manual (Opcional)" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all duration-200">
-                                                <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Manual (Efectivo)</span>
+                                                <div class="flex justify-between items-center mt-1">
+                                                    <span class="text-[9px] text-slate-400 font-semibold uppercase">Manual (Efectivo)</span>
+                                                    <span id="product-divisa-price-manual-ves" class="text-[10px] text-rose-500 font-black">0,00 BS.</span>
+                                                </div>
                                             </div>
                                             <div>
                                                 <input type="number" id="product-divisa-price-auto" step="0.01" readonly placeholder="Calculado" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-bold cursor-not-allowed focus:outline-none transition-all duration-200">
-                                                <span class="text-[9px] text-slate-400 font-semibold uppercase mt-1 block">Autocalculado (Binance)</span>
+                                                <div class="flex justify-between items-center mt-1">
+                                                    <span class="text-[9px] text-slate-400 font-semibold uppercase">Autocalculado (Binance)</span>
+                                                    <span id="product-divisa-price-auto-ves" class="text-[10px] text-rose-500 font-black">0,00 BS.</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <p class="text-[10px] text-slate-400 mt-1.5"><i class="fas fa-info-circle mr-1"></i>Precio de descuento para pagos en divisas en efectivo.</p>
@@ -749,6 +761,8 @@
                 // Modo manual predeterminado
                 setPriceMode('manual');
                 
+                updateVesConversions();
+                
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (hash.startsWith('#editar-')) {
                 formView.classList.remove('hidden');
@@ -796,6 +810,9 @@
                     
                     // Forzar cálculo de campos automáticos al cargar
                     calculatePrice();
+                    
+                    // Actualizar conversiones a bolívares
+                    updateVesConversions();
                     
                     // Prellenar Foto
                     if (editingProduct.imagen) {
@@ -2381,6 +2398,8 @@
                 productPriceAutoInput.value = '';
                 productDivisaPriceAutoInput.value = '';
             }
+            // Actualizar conversiones a bolívares
+            updateVesConversions();
         }
 
         productCostInput.addEventListener('input', calculatePrice);
@@ -2399,6 +2418,36 @@
                 calculatePrice();
             }
         });
+
+        // --- CONVERSIÓN EN TIEMPO REAL A BCV (BOLÍVARES) EN FORMULARIO ---
+        function updateVesConversions() {
+            // Manual
+            const priceManual = parseFloat(productPriceManualInput.value) || 0;
+            const priceManualVes = priceManual * exchangeRate;
+            const manualLabel = document.getElementById('product-price-manual-ves');
+            if (manualLabel) manualLabel.textContent = priceManual > 0 ? `${formatBS(priceManualVes)} BS.` : '0,00 BS.';
+
+            // Auto
+            const priceAuto = parseFloat(productPriceAutoInput.value) || 0;
+            const priceAutoVes = priceAuto * exchangeRate;
+            const autoLabel = document.getElementById('product-price-auto-ves');
+            if (autoLabel) autoLabel.textContent = priceAuto > 0 ? `${formatBS(priceAutoVes)} BS.` : '0,00 BS.';
+
+            // Divisa Manual
+            const priceDivisaManual = parseFloat(productDivisaPriceManualInput.value) || 0;
+            const priceDivisaManualVes = priceDivisaManual * exchangeRate;
+            const divisaManualLabel = document.getElementById('product-divisa-price-manual-ves');
+            if (divisaManualLabel) divisaManualLabel.textContent = priceDivisaManual > 0 ? `${formatBS(priceDivisaManualVes)} BS.` : '0,00 BS.';
+
+            // Divisa Auto
+            const priceDivisaAuto = parseFloat(productDivisaPriceAutoInput.value) || 0;
+            const priceDivisaAutoVes = priceDivisaAuto * exchangeRate;
+            const divisaAutoLabel = document.getElementById('product-divisa-price-auto-ves');
+            if (divisaAutoLabel) divisaAutoLabel.textContent = priceDivisaAuto > 0 ? `${formatBS(priceDivisaAutoVes)} BS.` : '0,00 BS.';
+        }
+
+        productPriceManualInput.addEventListener('input', updateVesConversions);
+        productDivisaPriceManualInput.addEventListener('input', updateVesConversions);
 
         // Inicializar listeners de botones de modo
         document.addEventListener('DOMContentLoaded', () => {
