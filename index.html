@@ -218,7 +218,8 @@
                             <!-- Marca del Producto -->
                             <div>
                                 <label for="product-brand" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Marca</label>
-                                <input type="text" id="product-brand" placeholder="Ej. Bticino, Phillips (Opcional)" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                                <input type="text" id="product-brand" list="brands-list" placeholder="Ej. Bticino, Phillips (Opcional)" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                                <datalist id="brands-list"></datalist>
                             </div>
 
                             <!-- Código de Barra con Lector de Cámara -->
@@ -1352,6 +1353,17 @@
                     });
                     brandSelect.value = currentValue;
                 }
+
+                // Cargar también las marcas en el datalist del formulario para autocompletado
+                const brandsList = document.getElementById('brands-list');
+                if (brandsList) {
+                    brandsList.innerHTML = '';
+                    brands.forEach(brand => {
+                        const opt = document.createElement('option');
+                        opt.value = brand;
+                        brandsList.appendChild(opt);
+                    });
+                }
             } catch (err) {
                 console.error('Error al cargar marcas para el buscador:', err);
             }
@@ -1675,7 +1687,7 @@
                         
                         <!-- Marca Flotante en la Esquina Superior Derecha (Estilo Etiqueta de Descuento/Oferta) -->
                         ${product.marca ? `
-                        <span class="absolute top-0 right-0 bg-gradient-to-bl from-rose-500 to-pink-600 text-white text-[9px] sm:text-[10px] font-black px-3 py-1.5 rounded-bl-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-top-right transition-all duration-300" title="${product.marca}">
+                        <span class="absolute top-0 right-0 bg-gradient-to-bl ${gradient} text-white text-[9px] sm:text-[10px] font-black px-3 py-1.5 rounded-bl-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-top-right transition-all duration-300" title="${product.marca}">
                             <i class="fas fa-tag mr-1 text-[8px] sm:text-[9px] flex-shrink-0"></i>
                             <span class="max-w-[70px] truncate">${product.marca}</span>
                         </span>
