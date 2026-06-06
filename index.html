@@ -1744,11 +1744,11 @@
                             <div class="flex items-center space-x-1 min-w-0">
                                 <button onclick="editProduct(${product.id})" class="flex items-center space-x-1 px-2 py-1 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-500 rounded-lg transition-all duration-200 border border-slate-200 hover:border-rose-200 font-bold" title="Editar Producto">
                                     <i class="fas fa-pen text-[10px]"></i>
-                                    <span class="hidden lg:inline">Editar</span>
+                                    <span class="text-[10px] sm:text-xs">Editar</span>
                                 </button>
                                 <button onclick="confirmDelete(${product.id})" class="flex items-center space-x-1 px-2 py-1 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-all duration-200 border border-slate-200 hover:border-rose-200 font-bold" title="Eliminar Producto">
                                     <i class="fas fa-trash-alt text-[10px]"></i>
-                                    <span class="hidden lg:inline">Eliminar</span>
+                                    <span class="text-[10px] sm:text-xs">Eliminar</span>
                                 </button>
                                 <button onclick="addProductToCart(${product.id}, event)" data-cart-btn-id="${product.id}" class="flex items-center justify-center px-2 py-1 rounded-lg transition-all duration-200 border font-bold ${cartBtnClass}" title="Añadir al carrito">
                                     ${cartBtnContent}
