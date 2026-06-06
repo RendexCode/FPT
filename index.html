@@ -1601,8 +1601,8 @@
                     : `<i class="fas fa-shopping-cart text-[10px]"></i>`;
 
                 const productMediaHTML = (product.imagen && product.imagen.startsWith('data:image'))
-                    ? `<img src="${product.imagen}" alt="${product.nombre}" onclick="openProductImage(${product.id}, event)" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm sm:mr-5 flex-shrink-0 select-none cursor-zoom-in transform hover:scale-[1.08] transition-transform duration-300" title="Hacer clic para ampliar imagen" />`
-                    : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm sm:mr-5 flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
+                    ? `<img src="${product.imagen}" alt="${product.nombre}" onclick="openProductImage(${product.id}, event)" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm flex-shrink-0 select-none cursor-zoom-in transform hover:scale-[1.08] transition-transform duration-300" title="Hacer clic para ampliar imagen" />`
+                    : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
 
                 html += `
                     <div class="group bg-white border border-slate-200 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] hover:border-rose-300 transition-all duration-300 flex flex-col overflow-hidden relative">
@@ -1642,18 +1642,18 @@
                         <div class="border-t border-slate-100"></div>
 
                         <!-- PARTE INFERIOR (Footer / Stats Bar) -->
-                        <div class="bg-slate-50/50 px-5 py-3 flex items-center justify-between text-xs">
-                            <!-- Stock Status -->
-                            <div class="flex items-center space-x-1.5">
+                        <div class="bg-slate-50/50 px-5 py-3 flex items-center space-x-4 text-xs">
+                            <!-- Stock Status (Alineado con la foto) -->
+                            <div class="w-16 sm:w-20 flex-shrink-0 flex items-center space-x-1.5">
                                 <i class="fas fa-cubes text-slate-400"></i>
                                 ${outOfStock 
-                                    ? `<span class="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 text-[10px]">Agotado</span>` 
-                                    : `<span class="font-extrabold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[10px]">Stock: ${stockVal}</span>`
+                                    ? `<span class="font-extrabold text-rose-600 bg-rose-50 px-1 py-0.5 rounded border border-rose-100 text-[9px] sm:text-[10px] truncate" title="Agotado">Agotado</span>` 
+                                    : `<span class="font-extrabold text-slate-600 bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-[9px] sm:text-[10px] truncate" title="Stock: ${stockVal}">Stock: ${stockVal}</span>`
                                 }
                             </div>
 
-                            <!-- Botones de Acción (Editar, Eliminar y Carrito) -->
-                            <div class="flex items-center space-x-1.5">
+                            <!-- Botones de Acción (Editar, Eliminar y Carrito - Alineados con el contenido) -->
+                            <div class="flex-grow flex items-center justify-end space-x-1.5">
                                 <button onclick="editProduct(${product.id})" class="flex items-center space-x-1 px-3 py-1.5 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-500 rounded-lg transition-all duration-200 border border-slate-200 hover:border-rose-200 font-bold" title="Editar Producto">
                                     <i class="fas fa-pen text-[10px]"></i>
                                     <span>Editar</span>
