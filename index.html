@@ -1263,18 +1263,25 @@
                     }
                 });
 
-                // Si hay stock insuficiente, mostrar alerta y cancelar
+                let skipStockUpdates = false;
+
+                // Si hay stock insuficiente, ofrecer la opción de forzar la venta sin rebajar stock
                 if (insufficientStockItems.length > 0) {
                     const itemsList = insufficientStockItems
                         .map(i => `- ${i.nombre}: Solicitado ${formatQuantity(i.requested)}, Disponible ${formatQuantity(i.currentStock)}`)
                         .join('\n');
-                    alert(`No hay suficiente stock para completar la venta:\n\n${itemsList}`);
                     
-                    if (confirmBtn) {
-                        confirmBtn.disabled = false;
-                        confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
+                    const forceSale = confirm(`Atención: No hay suficiente stock para completar la venta:\n\n${itemsList}\n\n¿Deseas registrar la venta de todas formas SIN descontar el stock del inventario?`);
+                    
+                    if (forceSale) {
+                        skipStockUpdates = true;
+                    } else {
+                        if (confirmBtn) {
+                            confirmBtn.disabled = false;
+                            confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
+                        }
+                        return;
                     }
-                    return;
                 }
 
                 // Preparar registros para la tabla 'ventas'
@@ -1283,12 +1290,12 @@
                     const priceVes = price * exchangeRate;
                     const priceDivisa = parseFloat(item.precio_divisa) || 0;
                     const qty = parseFloat(item.quantity) || 1;
-                    const matchingUpdate = stockUpdates.find(u => u.id === item.id);
+                    const dbProduct = currentProducts.find(p => p.id === item.id);
 
                     return {
                         producto_id: item.id,
                         nombre_producto: item.nombre,
-                        marca_producto: matchingUpdate ? matchingUpdate.marca : null,
+                        marca_producto: dbProduct ? dbProduct.marca : null,
                         cantidad: qty,
                         precio_usd: price,
                         precio_ves: priceVes,
@@ -1299,13 +1306,16 @@
                     };
                 });
 
-                // 3. Ejecutar las actualizaciones de stock en Supabase
-                const updatePromises = stockUpdates.map(update => {
-                    return _supabase
-                        .from('productos')
-                        .update({ stock: update.newStock })
-                        .eq('id', update.id);
-                });
+                // 3. Ejecutar las actualizaciones de stock en Supabase (solo si no se omitió)
+                let updatePromises = [];
+                if (!skipStockUpdates) {
+                    updatePromises = stockUpdates.map(update => {
+                        return _supabase
+                            .from('productos')
+                            .update({ stock: update.newStock })
+                            .eq('id', update.id);
+                    });
+                }
 
                 // Registrar las ventas en la nueva tabla 'ventas'
                 const insertSalesPromise = _supabase
@@ -1318,13 +1328,15 @@
                 const failedUpdate = results.find(res => res.error);
                 if (failedUpdate) throw failedUpdate.error;
 
-                // 4. Actualizar inventario local optimísticamente
-                stockUpdates.forEach(update => {
-                    const localProductIndex = fullInventory.findIndex(p => p.id === update.id);
-                    if (localProductIndex !== -1) {
-                        fullInventory[localProductIndex].stock = update.newStock;
-                    }
-                });
+                // 4. Actualizar inventario local optimísticamente (solo si no se omitió)
+                if (!skipStockUpdates) {
+                    stockUpdates.forEach(update => {
+                        const localProductIndex = fullInventory.findIndex(p => p.id === update.id);
+                        if (localProductIndex !== -1) {
+                            fullInventory[localProductIndex].stock = update.newStock;
+                        }
+                    });
+                }
 
                 // 5. Finalizar proceso: vaciar carrito, re-renderizar catálogo y volver
                 cart = [];
@@ -1332,7 +1344,11 @@
                 renderCatalog();
                 backToCatalogFromCart();
                 
-                alert('¡Venta realizada con éxito! El stock ha sido rebajado y la venta ha sido registrada.');
+                if (skipStockUpdates) {
+                    alert('¡Venta realizada con éxito! Se ha registrado la venta, pero NO se descontó el stock del inventario.');
+                } else {
+                    alert('¡Venta realizada con éxito! El stock ha sido rebajado y la venta ha sido registrada.');
+                }
             } catch (err) {
                 console.error('Error al procesar la venta en Supabase:', err);
                 alert('No se pudo procesar la venta: ' + err.message);
