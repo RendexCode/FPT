@@ -2111,6 +2111,14 @@
                         loadBusinessName();
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'ventas' },
+                    (payload) => {
+                        console.log('Cambio detectado en ventas (Realtime):', payload);
+                        loadSalesHistory();
+                    }
+                )
                 .subscribe((status, err) => {
                     console.log(`Estado de suscripción Realtime: ${status}`);
                     if (status === 'SUBSCRIBED') {
