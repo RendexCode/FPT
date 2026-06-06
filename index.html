@@ -446,9 +446,15 @@
     <div id="cart-view" class="hidden flex-col h-screen max-h-screen overflow-hidden">
         <!-- BARRA SUPERIOR DE CARRITO -->
         <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm flex-shrink-0">
-            <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
-                Mi Carrito
-            </h1>
+            <div class="flex items-center">
+                <button onclick="backToCatalogFromCart()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors mr-4" title="Volver al catálogo">
+                    <i class="fas fa-arrow-left text-lg"></i>
+                    <span class="hidden sm:inline">Volver</span>
+                </button>
+                <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
+                    Mi Carrito
+                </h1>
+            </div>
             
             <!-- Switch Premium para cambiar de BCV a DIVISA -->
             <div class="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200 shadow-sm flex-shrink-0">
@@ -482,8 +488,9 @@
                         <i class="fas fa-trash-alt text-xs"></i>
                         <span>Vaciar Carrito</span>
                     </button>
-                    <button onclick="backToCatalogFromCart()" class="py-2.5 px-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-xl font-bold text-sm hover:from-rose-600 hover:to-rose-700 transition-all shadow-md hover:shadow-rose-100 flex items-center justify-center" title="Volver al Catálogo">
-                        <span>Catálogo</span>
+                    <button id="btn-vender-carrito" onclick="checkoutCart()" class="py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm hover:from-emerald-600 hover:to-teal-700 transition-all shadow-md hover:shadow-emerald-100 flex items-center justify-center space-x-2" title="Realizar venta y rebajar inventario">
+                        <i class="fas fa-cash-register text-xs"></i>
+                        <span>Vender</span>
                     </button>
                 </div>
 
@@ -1015,6 +1022,102 @@
             oldIds.forEach(id => updateProductCardCartState(id));
             
             backToCatalogFromCart();
+        }
+
+        // Procesar la venta y rebajar el stock en Supabase
+        async function checkoutCart() {
+            if (cart.length === 0) return;
+
+            const confirmBtn = document.getElementById('btn-vender-carrito');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Procesando...';
+            }
+
+            try {
+                // 1. Obtener la información del stock actual desde Supabase
+                const productIds = cart.map(item => item.id);
+                const { data: currentProducts, error: fetchError } = await _supabase
+                    .from('productos')
+                    .select('id, nombre, stock')
+                    .in('id', productIds);
+
+                if (fetchError) throw fetchError;
+
+                // 2. Validar disponibilidad de stock
+                const stockUpdates = [];
+                const insufficientStockItems = [];
+
+                cart.forEach(item => {
+                    const dbProduct = currentProducts.find(p => p.id === item.id);
+                    const currentStock = dbProduct ? parseInt(dbProduct.stock, 10) || 0 : 0;
+                    
+                    if (currentStock < item.quantity) {
+                        insufficientStockItems.push({
+                            nombre: item.nombre,
+                            currentStock,
+                            requested: item.quantity
+                        });
+                    } else {
+                        stockUpdates.push({
+                            id: item.id,
+                            newStock: currentStock - item.quantity
+                        });
+                    }
+                });
+
+                // Si hay stock insuficiente, mostrar alerta y cancelar
+                if (insufficientStockItems.length > 0) {
+                    const itemsList = insufficientStockItems
+                        .map(i => `- ${i.nombre}: Solicitado ${i.requested}, Disponible ${i.currentStock}`)
+                        .join('\n');
+                    alert(`No hay suficiente stock para completar la venta:\n\n${itemsList}`);
+                    
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
+                    }
+                    return;
+                }
+
+                // 3. Ejecutar las actualizaciones de stock en Supabase
+                const updatePromises = stockUpdates.map(update => {
+                    return _supabase
+                        .from('productos')
+                        .update({ stock: update.newStock })
+                        .eq('id', update.id);
+                });
+
+                const results = await Promise.all(updatePromises);
+                
+                // Verificar si hubo algún error en las actualizaciones
+                const failedUpdate = results.find(res => res.error);
+                if (failedUpdate) throw failedUpdate.error;
+
+                // 4. Actualizar inventario local optimísticamente
+                stockUpdates.forEach(update => {
+                    const localProductIndex = fullInventory.findIndex(p => p.id === update.id);
+                    if (localProductIndex !== -1) {
+                        fullInventory[localProductIndex].stock = update.newStock;
+                    }
+                });
+
+                // 5. Finalizar proceso: vaciar carrito, re-renderizar catálogo y volver
+                cart = [];
+                saveCart();
+                renderCatalog();
+                backToCatalogFromCart();
+                
+                alert('¡Venta realizada con éxito! El stock ha sido rebajado en Supabase.');
+            } catch (err) {
+                console.error('Error al procesar la venta en Supabase:', err);
+                alert('No se pudo procesar la venta: ' + err.message);
+            } finally {
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
+                }
+            }
         }
 
         // Actualizar visualmente el estado del botón del carrito de una tarjeta
