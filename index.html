@@ -3309,8 +3309,8 @@
 
             noResultsMessage.classList.add('hidden');
 
-            let html = '';
-            fullInventory.forEach(product => {
+            // Función auxiliar para renderizar una tarjeta de producto
+            function getProductHTML(product) {
                 const initial = product.nombre.charAt(0).toUpperCase();
                 const gradient = getGradient(product.nombre);
                 const stockVal = parseFloat(product.stock) || 0;
@@ -3335,7 +3335,7 @@
                     ? `<img src="${product.imagen}" alt="${product.nombre}" onclick="openProductImage(${product.id}, event)" class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-sm flex-shrink-0 select-none cursor-zoom-in transform hover:scale-[1.08] transition-transform duration-300" title="Hacer clic para ampliar imagen" />`
                     : `<div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-sm flex-shrink-0 select-none transform group-hover:scale-105 transition-transform duration-300">${initial}</div>`;
 
-                html += `
+                return `
                     <div class="group bg-white border border-slate-200 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] hover:border-rose-300 transition-all duration-300 flex flex-col overflow-hidden relative">
                         
                         <!-- Marca Flotante en la Esquina Superior Derecha (Estilo Etiqueta de Descuento/Oferta) -->
@@ -3410,7 +3410,59 @@
                         </div>
                     </div>
                 `;
-            });
+            }
+
+            let html = '';
+
+            if (currentSearchQuery) {
+                const query = currentSearchQuery.toLowerCase();
+                const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const exactRegex = new RegExp('\\b' + escapedQuery + '\\b', 'i');
+
+                const exactMatches = [];
+                const similarMatches = [];
+
+                fullInventory.forEach(product => {
+                    const name = product.nombre ? product.nombre.toLowerCase() : '';
+                    const code = product.codigo ? product.codigo.toLowerCase() : '';
+                    if (exactRegex.test(name) || exactRegex.test(code)) {
+                        exactMatches.push(product);
+                    } else {
+                        similarMatches.push(product);
+                    }
+                });
+
+                // Renderizar coincidencias exactas
+                exactMatches.forEach(p => {
+                    html += getProductHTML(p);
+                });
+
+                // Renderizar divisor y coincidencias parciales si existen ambos
+                if (exactMatches.length > 0 && similarMatches.length > 0) {
+                    html += `
+                        <div class="col-span-full flex items-center my-6">
+                            <div class="h-px flex-grow bg-slate-200/80"></div>
+                            <span class="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50 py-1.5 rounded-full border border-slate-100 shadow-sm flex items-center space-x-1.5 select-none">
+                                <i class="fas fa-search-plus text-rose-400"></i>
+                                <span>Productos Similares</span>
+                            </span>
+                            <div class="h-px flex-grow bg-slate-200/80"></div>
+                        </div>
+                    `;
+                    similarMatches.forEach(p => {
+                        html += getProductHTML(p);
+                    });
+                } else if (exactMatches.length === 0) {
+                    // Si no hay coincidencias exactas pero sí similares, las listamos directamente
+                    similarMatches.forEach(p => {
+                        html += getProductHTML(p);
+                    });
+                }
+            } else {
+                fullInventory.forEach(product => {
+                    html += getProductHTML(product);
+                });
+            }
 
             productsContainer.innerHTML = html;
         }
