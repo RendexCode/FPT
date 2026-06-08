@@ -2845,21 +2845,18 @@
             return Number.isInteger(num) ? num.toString() : parseFloat(num.toFixed(3)).toString();
         }
 
-        // --- GENERACIÓN DE REPORTE PDF (INVENTARIO Y FALTANTES) ---
+        // --- GENERACIÓN DE REPORTES PDF (INVENTARIO Y FALTANTES SEPARADOS) ---
         async function generateInventoryPDF() {
             if (!window.jspdf) {
                 alert("Las librerías de PDF se están cargando o no están disponibles. Revisa tu conexión a internet.");
                 return;
             }
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            
             // Obtener todos los productos de IndexedDB
             const allProducts = await getProductsFromIndexedDB();
             
             if (allProducts.length === 0) {
-                alert("No hay productos en el inventario para generar el PDF.");
+                alert("No hay productos en el inventario para generar los reportes.");
                 return;
             }
 
@@ -2872,7 +2869,20 @@
                 hour: '2-digit', minute: '2-digit'
             });
 
-            // 1. Encabezado
+            // 1. Exportar PDF de Faltantes/Agotados
+            exportFaltantesPDF(allProducts, businessName, dateStr);
+
+            // 2. Exportar PDF de Inventario Completo
+            exportInventarioPDF(allProducts, businessName, dateStr);
+        }
+
+        function exportFaltantesPDF(allProducts, businessName, dateStr) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            const outOfStockProducts = allProducts.filter(p => (parseFloat(p.stock) || 0) <= 0);
+
+            // Encabezado
             doc.setFont("Helvetica", "bold");
             doc.setFontSize(18);
             doc.setTextColor(225, 29, 72); // Rose 600
@@ -2880,44 +2890,30 @@
             
             doc.setFontSize(14);
             doc.setTextColor(15, 23, 42); // Slate 900
-            doc.text("REPORTE DE INVENTARIO Y FALTANTES", 14, 28);
+            doc.text("REPORTE DE PRODUCTOS FALTANTES / AGOTADOS", 14, 28);
 
             doc.setFont("Helvetica", "normal");
             doc.setFontSize(9);
             doc.setTextColor(100, 116, 139); // Slate 500
             doc.text(`Fecha de generación: ${dateStr}`, 14, 34);
 
-            // 2. Resumen Estadístico
-            const totalProducts = allProducts.length;
-            const outOfStockProducts = allProducts.filter(p => (parseFloat(p.stock) || 0) <= 0);
-            const totalStockVal = allProducts.reduce((sum, p) => sum + ((parseFloat(p.stock) || 0) * (parseFloat(p.costo_usd) || 0)), 0);
-            const totalRetailVal = allProducts.reduce((sum, p) => sum + ((parseFloat(p.stock) || 0) * (parseFloat(p.precio_usd) || 0)), 0);
-
+            // Resumen
             doc.setFont("Helvetica", "bold");
             doc.setFontSize(10);
             doc.setTextColor(15, 23, 42);
-            doc.text("RESUMEN GENERAL", 14, 44);
+            doc.text("RESUMEN DE FALTANTES", 14, 44);
 
             doc.setFont("Helvetica", "normal");
             doc.setFontSize(9);
-            doc.text(`Total de productos: ${totalProducts}`, 14, 50);
-            doc.text(`Productos agotados/faltantes: ${outOfStockProducts.length}`, 14, 55);
-            doc.text(`Valor total de costo en stock: $${totalStockVal.toFixed(2)} USD`, 100, 50);
-            doc.text(`Valor total de venta en stock: $${totalRetailVal.toFixed(2)} USD`, 100, 55);
+            doc.text(`Productos agotados/faltantes en total: ${outOfStockProducts.length}`, 14, 50);
 
             // Línea divisoria
             doc.setDrawColor(226, 232, 240); // Slate 200
-            doc.line(14, 60, 196, 60);
+            doc.line(14, 55, 196, 55);
 
-            let currentY = 65;
+            let currentY = 60;
 
-            // 3. Tabla de Faltantes (Agotados)
             if (outOfStockProducts.length > 0) {
-                doc.setFont("Helvetica", "bold");
-                doc.setFontSize(11);
-                doc.setTextColor(225, 29, 72); // Rose 600
-                doc.text(`PRODUCTOS AGOTADOS / FALTANTES (${outOfStockProducts.length})`, 14, currentY);
-                
                 const faltantesData = outOfStockProducts.map(p => [
                     p.nombre,
                     p.marca || '-',
@@ -2928,7 +2924,7 @@
                 ]);
 
                 doc.autoTable({
-                    startY: currentY + 3,
+                    startY: currentY,
                     head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Stock']],
                     body: faltantesData,
                     theme: 'grid',
@@ -2943,27 +2939,57 @@
                         5: { cellWidth: 12, halign: 'center', fontStyle: 'bold', textColor: [225, 29, 72] }
                     }
                 });
-
-                currentY = doc.lastAutoTable.finalY + 10;
             } else {
                 doc.setFont("Helvetica", "bold");
-                doc.setFontSize(10);
+                doc.setFontSize(11);
                 doc.setTextColor(22, 163, 74); // Green 600
-                doc.text("¡No hay productos agotados! Inventario completo al 100%.", 14, currentY);
-                currentY += 8;
+                doc.text("¡Excelente! No se encontraron productos agotados en el inventario.", 14, currentY + 5);
             }
 
-            // Evitar saltar de página a la mitad si no cabe la cabecera
-            if (currentY > 250) {
-                doc.addPage();
-                currentY = 20;
-            }
+            const filename = `Faltantes_${businessName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+            doc.save(filename);
+        }
 
-            // 4. Tabla de Inventario Completo
+        function exportInventarioPDF(allProducts, businessName, dateStr) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+
+            // Encabezado
             doc.setFont("Helvetica", "bold");
-            doc.setFontSize(11);
+            doc.setFontSize(18);
+            doc.setTextColor(71, 85, 105); // Slate 600
+            doc.text(businessName.toUpperCase(), 14, 20);
+            
+            doc.setFontSize(14);
             doc.setTextColor(15, 23, 42); // Slate 900
-            doc.text("INVENTARIO COMPLETO", 14, currentY);
+            doc.text("REPORTE DE INVENTARIO COMPLETO", 14, 28);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139); // Slate 500
+            doc.text(`Fecha de generación: ${dateStr}`, 14, 34);
+
+            // Resumen
+            const totalProducts = allProducts.length;
+            const totalStockVal = allProducts.reduce((sum, p) => sum + ((parseFloat(p.stock) || 0) * (parseFloat(p.costo_usd) || 0)), 0);
+            const totalRetailVal = allProducts.reduce((sum, p) => sum + ((parseFloat(p.stock) || 0) * (parseFloat(p.precio_usd) || 0)), 0);
+
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text("RESUMEN DE INVENTARIO", 14, 44);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.text(`Total de productos registrados: ${totalProducts}`, 14, 50);
+            doc.text(`Valor total de costo en stock: $${totalStockVal.toFixed(2)} USD`, 100, 50);
+            doc.text(`Valor total de venta en stock: $${totalRetailVal.toFixed(2)} USD`, 100, 55);
+
+            // Línea divisoria
+            doc.setDrawColor(226, 232, 240); // Slate 200
+            doc.line(14, 60, 196, 60);
+
+            let currentY = 65;
 
             const inventoryData = allProducts.map(p => {
                 const stockVal = parseFloat(p.stock) || 0;
@@ -2978,7 +3004,7 @@
             });
 
             doc.autoTable({
-                startY: currentY + 3,
+                startY: currentY,
                 head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Stock']],
                 body: inventoryData,
                 theme: 'grid',
