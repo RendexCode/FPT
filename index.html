@@ -2196,8 +2196,7 @@
         async function loadBrandOptions() {
             try {
                 if (!navigator.onLine) {
-                    const cachedStr = localStorage.getItem('rendex_cached_products');
-                    const cachedProducts = cachedStr ? JSON.parse(cachedStr) : [];
+                    const cachedProducts = await getProductsFromIndexedDB();
                     const brands = [...new Set(cachedProducts.map(p => p.marca).filter(Boolean).map(m => m.trim()))].sort((a, b) => a.localeCompare(b));
                     
                     if (brandSelect) {
@@ -2270,24 +2269,147 @@
             return true;
         }
 
-        function cacheProductsLocally(products) {
+        // --- INDEXEDDB HELPER FUNCTIONS ---
+        const DB_NAME = 'rendex_db';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'productos';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = (e) => reject(request.error);
+                request.onsuccess = (e) => resolve(request.result);
+                request.onupgradeneeded = (e) => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        async function saveProductsToIndexedDB(products, clearFirst = false) {
             try {
-                const cachedStr = localStorage.getItem('rendex_cached_products');
-                let cached = cachedStr ? JSON.parse(cachedStr) : [];
-                
-                const map = new Map(cached.map(p => [p.id, p]));
-                products.forEach(p => {
-                    map.set(p.id, p);
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+
+                    if (clearFirst) {
+                        store.clear();
+                    }
+
+                    products.forEach(p => {
+                        store.put(p);
+                    });
                 });
-                
-                cached = Array.from(map.values());
-                localStorage.setItem('rendex_cached_products', JSON.stringify(cached));
             } catch (e) {
-                console.error("Error saving cached products:", e);
+                console.error("Error saving products to IndexedDB:", e);
             }
         }
 
-        function loadInventoryOffline(searchQuery = '', append = false) {
+        async function saveProductToIndexedDB(product) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put(product);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (e) {
+                console.error("Error saving product to IndexedDB:", e);
+            }
+        }
+
+        async function deleteProductFromIndexedDB(id) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.delete(id);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (e) {
+                console.error("Error deleting product from IndexedDB:", e);
+            }
+        }
+
+        async function getProductsFromIndexedDB() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (e) {
+                console.error("Error getting products from IndexedDB:", e);
+                return [];
+            }
+        }
+
+        // Sincronización completa en segundo plano del inventario
+        let isSyncingAll = false;
+        async function syncAllProducts() {
+            if (isSyncingAll || !navigator.onLine) return;
+            isSyncingAll = true;
+            console.log("Iniciando sincronización completa del catálogo con IndexedDB...");
+            
+            try {
+                let allProducts = [];
+                let from = 0;
+                const batchSize = 1000;
+                let hasMore = true;
+                
+                while (hasMore) {
+                    const to = from + batchSize - 1;
+                    const { data, error } = await _supabase
+                        .from('productos')
+                        .select('*')
+                        .range(from, to);
+                        
+                    if (error) throw error;
+                    
+                    const batch = data || [];
+                    allProducts = [...allProducts, ...batch];
+                    
+                    if (batch.length < batchSize) {
+                        hasMore = false;
+                    } else {
+                        from += batchSize;
+                    }
+                }
+                
+                if (allProducts.length > 0) {
+                    await saveProductsToIndexedDB(allProducts, true); // Guardar todo y limpiar IndexedDB
+                    console.log(`Sincronización de catálogo finalizada con éxito. ${allProducts.length} productos guardados en IndexedDB.`);
+                    
+                    // Si estamos offline y justo volvimos online, o si el catálogo está vacío, recargar
+                    if (fullInventory.length === 0) {
+                        renderCatalog();
+                    }
+                }
+            } catch (err) {
+                console.error("Error durante la sincronización completa de productos:", err);
+            } finally {
+                isSyncingAll = false;
+            }
+        }
+
+        async function cacheProductsLocally(products) {
+            await saveProductsToIndexedDB(products, false);
+        }
+
+        async function loadInventoryOffline(searchQuery = '', append = false) {
             try {
                 if (!append) {
                     currentPage = 0;
@@ -2298,18 +2420,18 @@
                     noResultsMessage.classList.add('hidden');
                 }
                 
-                const cachedStr = localStorage.getItem('rendex_cached_products');
-                let cachedProducts = cachedStr ? JSON.parse(cachedStr) : [];
+                const cachedProducts = await getProductsFromIndexedDB();
+                let filteredProducts = [...cachedProducts];
                 
                 // Filter by brand
                 if (currentBrandFilter) {
-                    cachedProducts = cachedProducts.filter(p => p.marca === currentBrandFilter);
+                    filteredProducts = filteredProducts.filter(p => p.marca === currentBrandFilter);
                 }
                 
                 // Filter by searchQuery
                 if (searchQuery) {
                     const query = searchQuery.toLowerCase();
-                    cachedProducts = cachedProducts.filter(p => {
+                    filteredProducts = filteredProducts.filter(p => {
                         const nameMatch = p.nombre && p.nombre.toLowerCase().includes(query);
                         const codeMatch = p.codigo && p.codigo.toLowerCase().includes(query);
                         return nameMatch || codeMatch;
@@ -2317,12 +2439,12 @@
                 }
                 
                 // Sort alphabetically
-                cachedProducts.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                filteredProducts.sort((a, b) => a.nombre.localeCompare(b.nombre));
                 
                 // Pagination in memory
                 const from = currentPage * pageSize;
                 const to = from + pageSize;
-                const pageProducts = cachedProducts.slice(from, to);
+                const pageProducts = filteredProducts.slice(from, to);
                 
                 if (pageProducts.length < pageSize) {
                     hasMoreProducts = false;
@@ -2340,7 +2462,7 @@
                 if (searchQuery || currentBrandFilter) {
                     totalProductsCount.textContent = `Resultados encontrados (Local): ${fullInventory.length}`;
                 } else {
-                    totalProductsCount.textContent = `Total en catálogo (Local): ${cachedProducts.length}`;
+                    totalProductsCount.textContent = `Total en catálogo (Local): ${filteredProducts.length}`;
                 }
                 
                 renderCatalog();
@@ -2418,8 +2540,8 @@
                     loadingMessage.classList.add('hidden');
                 }
 
-                // Cache newly loaded products in localStorage
-                cacheProductsLocally(newProducts);
+                // Cache newly loaded products in IndexedDB
+                await cacheProductsLocally(newProducts);
 
                 // Ocultar spinner del scroll infinito
                 document.getElementById('infinite-scroll-spinner').classList.add('hidden');
@@ -2441,7 +2563,7 @@
                 
                 // Fallback to offline cache
                 if (!navigator.onLine || err.message === 'offline' || err.message.includes('fetch') || err.message === 'Failed to fetch' || err.message === 'NetworkError') {
-                    loadInventoryOffline(searchQuery, append);
+                    await loadInventoryOffline(searchQuery, append);
                     return;
                 }
                 
@@ -2481,7 +2603,7 @@
             infiniteScrollObserver.observe(trigger);
         }
 
-        function handleRealtimeProductChange(payload) {
+        async function handleRealtimeProductChange(payload) {
             const eventType = payload.eventType;
             const newRow = payload.new;
             const oldRow = payload.old;
@@ -2512,7 +2634,7 @@
                     : `Total en catálogo: ${absoluteTotalCount}`;
 
                 // Cache local
-                cacheProductsLocally([newRow]);
+                await cacheProductsLocally([newRow]);
 
             } else if (eventType === 'UPDATE') {
                 const index = fullInventory.findIndex(p => p.id === newRow.id);
@@ -2538,7 +2660,7 @@
                         saveCart();
                     }
                     // Cache local
-                    cacheProductsLocally([mergedItem]);
+                    await cacheProductsLocally([mergedItem]);
                     return;
                 }
 
@@ -2575,7 +2697,7 @@
                 }
 
                 // Cache local
-                cacheProductsLocally([mergedRow]);
+                await cacheProductsLocally([mergedRow]);
 
             } else if (eventType === 'DELETE') {
                 const index = fullInventory.findIndex(p => p.id === oldRow.id);
@@ -2600,17 +2722,12 @@
 
                 // Eliminar de caché local
                 try {
-                    const cachedStr = localStorage.getItem('rendex_cached_products');
-                    if (cachedStr) {
-                        let cached = JSON.parse(cachedStr);
-                        cached = cached.filter(p => p.id !== oldRow.id);
-                        localStorage.setItem('rendex_cached_products', JSON.stringify(cached));
-                    }
+                    await deleteProductFromIndexedDB(oldRow.id);
                 } catch (e) {
                     console.error("Error removing deleted product from cache:", e);
                 }
             }
-            loadBrandOptions();
+            await loadBrandOptions();
         }
 
         function initRealtimeSubscriptions() {
@@ -2668,6 +2785,7 @@
             loadBrandOptions();
             initRealtimeSubscriptions();
             initDeleteHoldEvents();
+            syncAllProducts(); // Sincronización completa en segundo plano
         });
 
         // Eventos de conexión a Internet (Sincronización y advertencias)
@@ -2677,6 +2795,7 @@
             loadExchangeRate();
             loadInventory(searchInput.value.trim());
             loadBrandOptions();
+            syncAllProducts(); // Sincronización completa en segundo plano
             
             // Ocultar alerta de desconexión y restaurar su estado original
             disconnectAlert.classList.add('hidden');
