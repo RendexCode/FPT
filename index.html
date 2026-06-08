@@ -1241,6 +1241,7 @@
 
         // Procesar la venta con el método seleccionado, registrarla en ventas e ir a rebajar el stock en Supabase
         async function executeCheckout(paymentMethod) {
+            if (!checkOnlineStatus()) return;
             const confirmBtn = document.getElementById('btn-vender-carrito');
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -1724,6 +1725,7 @@
         }
 
         async function returnProduct(saleId, productId, quantity, productName) {
+            if (!checkOnlineStatus()) return;
             if (!confirm(`¿Estás seguro de que deseas devolver "${productName}"?\nSe reincorporarán ${quantity} unidad(es) al stock y se eliminará esta venta.`)) {
                 return;
             }
@@ -2104,11 +2106,19 @@
                     document.title = `${data.nombre} - Catálogo`;
                     businessNameDisplay.textContent = data.nombre;
                     businessNameInput.value = data.nombre;
+                    localStorage.setItem('rendex_business_name', data.nombre);
                 }
             } catch (err) {
                 console.error('Error al obtener el nombre del negocio de Supabase:', err);
-                businessNameDisplay.textContent = 'RENDEX';
-                businessNameInput.value = 'RENDEX';
+                const cachedName = localStorage.getItem('rendex_business_name');
+                if (cachedName) {
+                    document.title = `${cachedName} - Catálogo`;
+                    businessNameDisplay.textContent = cachedName;
+                    businessNameInput.value = cachedName;
+                } else {
+                    businessNameDisplay.textContent = 'RENDEX';
+                    businessNameInput.value = 'RENDEX';
+                }
             }
         }
 
@@ -2127,12 +2137,14 @@
                     if (bcvData) {
                         exchangeRate = parseFloat(parseFloat(bcvData.valor).toFixed(2)) || 1.0;
                         exchangeRateInput.value = exchangeRate.toFixed(2);
+                        localStorage.setItem('rendex_bcv_rate', exchangeRate.toString());
                     }
                     if (binanceData) {
                         binanceRate = parseFloat(parseFloat(binanceData.valor).toFixed(5)) || 1.0;
                         if (binanceRateInput) {
                             binanceRateInput.value = binanceRate.toFixed(2);
                         }
+                        localStorage.setItem('rendex_binance_rate', binanceRate.toString());
                     }
                     
                     renderCatalog();
@@ -2144,6 +2156,26 @@
                 }
             } catch (err) {
                 console.error('Error al obtener las tasas de cambio de Supabase:', err);
+                
+                // Fallback to cache
+                const cachedBcv = localStorage.getItem('rendex_bcv_rate');
+                const cachedBinance = localStorage.getItem('rendex_binance_rate');
+                if (cachedBcv) {
+                    exchangeRate = parseFloat(cachedBcv) || 1.0;
+                    exchangeRateInput.value = exchangeRate.toFixed(2);
+                }
+                if (cachedBinance) {
+                    binanceRate = parseFloat(cachedBinance) || 1.0;
+                    if (binanceRateInput) {
+                        binanceRateInput.value = binanceRate.toFixed(2);
+                    }
+                }
+                
+                renderCatalog();
+                if (priceMode === 'auto') {
+                    calculatePrice();
+                }
+                
                 disconnectAlert.classList.remove('hidden');
             }
         }
@@ -2163,6 +2195,35 @@
         // Cargar marcas únicas disponibles en la base de datos
         async function loadBrandOptions() {
             try {
+                if (!navigator.onLine) {
+                    const cachedStr = localStorage.getItem('rendex_cached_products');
+                    const cachedProducts = cachedStr ? JSON.parse(cachedStr) : [];
+                    const brands = [...new Set(cachedProducts.map(p => p.marca).filter(Boolean).map(m => m.trim()))].sort((a, b) => a.localeCompare(b));
+                    
+                    if (brandSelect) {
+                        const currentValue = brandSelect.value;
+                        brandSelect.innerHTML = '<option value="">Marcas</option>';
+                        brands.forEach(brand => {
+                            const opt = document.createElement('option');
+                            opt.value = brand;
+                            opt.textContent = brand;
+                            brandSelect.appendChild(opt);
+                        });
+                        brandSelect.value = currentValue;
+                    }
+                    
+                    const brandsList = document.getElementById('brands-list');
+                    if (brandsList) {
+                        brandsList.innerHTML = '';
+                        brands.forEach(brand => {
+                            const opt = document.createElement('option');
+                            opt.value = brand;
+                            brandsList.appendChild(opt);
+                        });
+                    }
+                    return;
+                }
+                
                 const { data, error } = await _supabase
                     .from('productos')
                     .select('marca')
@@ -2200,6 +2261,101 @@
             }
         }
 
+        // --- OFFLINE SUPPORT HELPERS ---
+        function checkOnlineStatus() {
+            if (!navigator.onLine) {
+                alert("¡Acción rechazada! No tienes conexión a internet. Conéctate para realizar esta operación.");
+                return false;
+            }
+            return true;
+        }
+
+        function cacheProductsLocally(products) {
+            try {
+                const cachedStr = localStorage.getItem('rendex_cached_products');
+                let cached = cachedStr ? JSON.parse(cachedStr) : [];
+                
+                const map = new Map(cached.map(p => [p.id, p]));
+                products.forEach(p => {
+                    map.set(p.id, p);
+                });
+                
+                cached = Array.from(map.values());
+                localStorage.setItem('rendex_cached_products', JSON.stringify(cached));
+            } catch (e) {
+                console.error("Error saving cached products:", e);
+            }
+        }
+
+        function loadInventoryOffline(searchQuery = '', append = false) {
+            try {
+                if (!append) {
+                    currentPage = 0;
+                    hasMoreProducts = true;
+                    fullInventory = [];
+                    productsContainer.innerHTML = '';
+                    loadingMessage.classList.add('hidden');
+                    noResultsMessage.classList.add('hidden');
+                }
+                
+                const cachedStr = localStorage.getItem('rendex_cached_products');
+                let cachedProducts = cachedStr ? JSON.parse(cachedStr) : [];
+                
+                // Filter by brand
+                if (currentBrandFilter) {
+                    cachedProducts = cachedProducts.filter(p => p.marca === currentBrandFilter);
+                }
+                
+                // Filter by searchQuery
+                if (searchQuery) {
+                    const query = searchQuery.toLowerCase();
+                    cachedProducts = cachedProducts.filter(p => {
+                        const nameMatch = p.nombre && p.nombre.toLowerCase().includes(query);
+                        const codeMatch = p.codigo && p.codigo.toLowerCase().includes(query);
+                        return nameMatch || codeMatch;
+                    });
+                }
+                
+                // Sort alphabetically
+                cachedProducts.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                
+                // Pagination in memory
+                const from = currentPage * pageSize;
+                const to = from + pageSize;
+                const pageProducts = cachedProducts.slice(from, to);
+                
+                if (pageProducts.length < pageSize) {
+                    hasMoreProducts = false;
+                }
+                
+                if (append) {
+                    fullInventory = [...fullInventory, ...pageProducts];
+                } else {
+                    fullInventory = pageProducts;
+                }
+                
+                // Hide spinner
+                document.getElementById('infinite-scroll-spinner').classList.add('hidden');
+                
+                if (searchQuery || currentBrandFilter) {
+                    totalProductsCount.textContent = `Resultados encontrados (Local): ${fullInventory.length}`;
+                } else {
+                    totalProductsCount.textContent = `Total en catálogo (Local): ${cachedProducts.length}`;
+                }
+                
+                renderCatalog();
+                updateInfiniteScrollObserver();
+                
+                // Show offline warning
+                disconnectAlert.classList.remove('hidden');
+                disconnectAlert.className = "bg-amber-600 text-white font-semibold text-center py-2.5 text-sm shadow-md transition-all duration-300 sticky top-0 z-50";
+                disconnectAlert.innerHTML = `<i class="fas fa-wifi-slash mr-2"></i>Modo Offline: Sin conexión a internet. Mostrando inventario guardado localmente.`;
+                
+            } catch (e) {
+                console.error("Error loading offline inventory:", e);
+            }
+        }
+
         // Búsqueda inteligente con paginación y scroll infinito
         async function loadInventory(searchQuery = '', append = false) {
             if (isLoadingMore && append) return;
@@ -2220,6 +2376,11 @@
                 } else {
                     // Mostrar spinner de carga al final del scroll
                     document.getElementById('infinite-scroll-spinner').classList.remove('hidden');
+                }
+
+                // If offline, throw error immediately to trigger offline flow
+                if (!navigator.onLine) {
+                    throw new Error("offline");
                 }
 
                 const from = currentPage * pageSize;
@@ -2257,6 +2418,9 @@
                     loadingMessage.classList.add('hidden');
                 }
 
+                // Cache newly loaded products in localStorage
+                cacheProductsLocally(newProducts);
+
                 // Ocultar spinner del scroll infinito
                 document.getElementById('infinite-scroll-spinner').classList.add('hidden');
 
@@ -2274,6 +2438,13 @@
                 
             } catch (err) {
                 console.error('Error al cargar inventario de Supabase:', err);
+                
+                // Fallback to offline cache
+                if (!navigator.onLine || err.message === 'offline' || err.message.includes('fetch') || err.message === 'Failed to fetch' || err.message === 'NetworkError') {
+                    loadInventoryOffline(searchQuery, append);
+                    return;
+                }
+                
                 disconnectAlert.classList.remove('hidden');
                 loadingMessage.classList.add('hidden');
                 document.getElementById('infinite-scroll-spinner').classList.add('hidden');
@@ -2340,6 +2511,9 @@
                     ? `Resultados encontrados: ${fullInventory.length}`
                     : `Total en catálogo: ${absoluteTotalCount}`;
 
+                // Cache local
+                cacheProductsLocally([newRow]);
+
             } else if (eventType === 'UPDATE') {
                 const index = fullInventory.findIndex(p => p.id === newRow.id);
 
@@ -2348,10 +2522,12 @@
                 // Supabase Realtime trunca columnas text grandes (base64 de imágenes) en el payload.
                 if (recentlyUpdatedIds.has(newRow.id)) {
                     recentlyUpdatedIds.delete(newRow.id);
+                    let mergedItem = newRow;
                     // Solo actualizamos los campos no-imagen del inventario local sin re-renderizar
                     if (index !== -1) {
                         const currentImagen = fullInventory[index].imagen;
                         fullInventory[index] = { ...newRow, imagen: currentImagen };
+                        mergedItem = fullInventory[index];
                     }
                     // Aún así actualizamos el carrito preservando imagen
                     const cartIndex = cart.findIndex(item => item.id === newRow.id);
@@ -2361,6 +2537,8 @@
                         cart[cartIndex] = { ...newRow, imagen: cartImagen, quantity: qty };
                         saveCart();
                     }
+                    // Cache local
+                    cacheProductsLocally([mergedItem]);
                     return;
                 }
 
@@ -2396,6 +2574,9 @@
                     renderCartItems();
                 }
 
+                // Cache local
+                cacheProductsLocally([mergedRow]);
+
             } else if (eventType === 'DELETE') {
                 const index = fullInventory.findIndex(p => p.id === oldRow.id);
                 if (index !== -1) {
@@ -2415,6 +2596,18 @@
                     cart.splice(cartIndex, 1);
                     saveCart();
                     renderCartItems();
+                }
+
+                // Eliminar de caché local
+                try {
+                    const cachedStr = localStorage.getItem('rendex_cached_products');
+                    if (cachedStr) {
+                        let cached = JSON.parse(cachedStr);
+                        cached = cached.filter(p => p.id !== oldRow.id);
+                        localStorage.setItem('rendex_cached_products', JSON.stringify(cached));
+                    }
+                } catch (e) {
+                    console.error("Error removing deleted product from cache:", e);
                 }
             }
             loadBrandOptions();
@@ -2475,6 +2668,31 @@
             loadBrandOptions();
             initRealtimeSubscriptions();
             initDeleteHoldEvents();
+        });
+
+        // Eventos de conexión a Internet (Sincronización y advertencias)
+        window.addEventListener('online', () => {
+            console.log("Conectado a internet. Sincronizando con Supabase...");
+            loadBusinessName();
+            loadExchangeRate();
+            loadInventory(searchInput.value.trim());
+            loadBrandOptions();
+            
+            // Ocultar alerta de desconexión y restaurar su estado original
+            disconnectAlert.classList.add('hidden');
+            disconnectAlert.className = "bg-rose-600 text-white font-semibold text-center py-2.5 text-sm shadow-md transition-all duration-300 hidden sticky top-0 z-50";
+            disconnectAlert.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Error al conectar con Supabase. Revisa tu conexión de red.`;
+        });
+
+        window.addEventListener('offline', () => {
+            console.log("Desconectado de internet. Entrando en modo offline local...");
+            // Mostrar banner informativo de modo offline
+            disconnectAlert.classList.remove('hidden');
+            disconnectAlert.className = "bg-amber-600 text-white font-semibold text-center py-2.5 text-sm shadow-md transition-all duration-300 sticky top-0 z-50";
+            disconnectAlert.innerHTML = `<i class="fas fa-wifi-slash mr-2"></i>Modo Offline: Sin conexión a internet. Mostrando inventario guardado localmente.`;
+            
+            // Recargar catálogo desde la caché local offline
+            loadInventory(searchInput.value.trim());
         });
 
         // --- FORMATEADOR DE BOLÍVARES (Puntos para miles, comas para decimales) ---
@@ -2794,6 +3012,7 @@
         // --- ENVÍO DE FORMULARIO ---
         productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!checkOnlineStatus()) return;
 
             const name = productNameInput.value.trim();
             const brand = productBrandInput.value.trim() || null;
@@ -2960,6 +3179,7 @@
         }
 
         async function executeProductDelete() {
+            if (!checkOnlineStatus()) return;
             if (!productIdToDelete) return;
 
             const btn = document.getElementById('hold-delete-btn');
@@ -3033,6 +3253,7 @@
         });
 
         saveBusinessBtn.addEventListener('click', async () => {
+            if (!checkOnlineStatus()) return;
             const newName = businessNameInput.value.trim();
             if (newName) {
                 try {
@@ -3055,6 +3276,7 @@
 
         // --- GUARDAR TASA DE CAMBIO BCV EN SUPABASE ---
         saveRateBtn.addEventListener('click', async () => {
+            if (!checkOnlineStatus()) return;
             const rate = parseFloat(exchangeRateInput.value);
             if (!isNaN(rate) && rate > 0) {
                 try {
@@ -3081,6 +3303,7 @@
 
         // --- GUARDAR TASA DE CAMBIO BINANCE EN SUPABASE ---
         saveBinanceRateBtn.addEventListener('click', async () => {
+            if (!checkOnlineStatus()) return;
             const rate = parseFloat(binanceRateInput.value);
             if (!isNaN(rate) && rate > 0) {
                 try {
