@@ -510,6 +510,19 @@
                     </div>
                 </div>
 
+                <!-- Selector de método de pago en Divisa (Zelle vs Efectivo) -->
+                <div id="divisa-method-container" class="hidden flex-col space-y-2 bg-slate-50 border border-slate-200/60 rounded-2xl p-4 shadow-sm">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block"><i class="fas fa-wallet mr-1 text-amber-500"></i>Método de Pago Divisa</span>
+                    <div class="grid grid-cols-2 gap-2 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
+                        <button onclick="setDivisaPaymentMethod('EFECTIVO')" id="divisa-method-efectivo" class="py-2.5 text-xs font-black rounded-lg transition-all duration-300 shadow-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white">
+                            <i class="fas fa-money-bill-wave mr-1.5"></i>Efectivo
+                        </button>
+                        <button onclick="setDivisaPaymentMethod('ZELLE')" id="divisa-method-zelle" class="py-2.5 text-xs font-extrabold rounded-lg transition-all duration-300 text-slate-500 hover:text-slate-800">
+                            <i class="fas fa-bolt mr-1.5"></i>Zelle (+8%)
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Botones de Acción de Control -->
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="clearCart()" class="py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-600 hover:text-rose-600 rounded-xl font-bold text-sm transition-all border border-slate-200 flex items-center justify-center space-x-2 shadow-sm" title="Vaciar Carrito">
@@ -626,6 +639,7 @@
         let productIdToDelete = null;
         let absoluteTotalCount = 0;
         let cartPriceMode = 'bcv'; // 'bcv' o 'divisa'
+        let selectedDivisaMethod = 'EFECTIVO'; // 'EFECTIVO' o 'ZELLE'
         let searchTimeout = null;
         // IDs de productos recién guardados localmente — protege la imagen contra el eco de Realtime
         const recentlyUpdatedIds = new Set();
@@ -1187,7 +1201,11 @@
             if (cart.length === 0) return;
             
             if (cartPriceMode === 'divisa') {
-                executeCheckout('DIVISA');
+                if (selectedDivisaMethod === 'ZELLE') {
+                    executeCheckout('ZELLE');
+                } else {
+                    executeCheckout('DIVISA');
+                }
             } else {
                 openPaymentMethodModal();
             }
@@ -1285,6 +1303,9 @@
 
                 // Preparar registros para la tabla 'ventas'
                 const salesData = cart.map(item => {
+                    const isZelle = paymentMethod === 'ZELLE';
+                    const multiplier = isZelle ? 1.08 : 1.0;
+                    
                     const price = parseFloat(item.precio_usd) || 0;
                     const priceVes = price * exchangeRate;
                     const priceDivisa = parseFloat(item.precio_divisa) || 0;
@@ -1296,11 +1317,11 @@
                         nombre_producto: item.nombre,
                         marca_producto: dbProduct ? dbProduct.marca : null,
                         cantidad: qty,
-                        precio_usd: price,
-                        precio_ves: priceVes,
-                        precio_divisa: priceDivisa,
-                        total_usd: price * qty,
-                        total_ves: priceVes * qty,
+                        precio_usd: price * multiplier,
+                        precio_ves: priceVes * multiplier,
+                        precio_divisa: priceDivisa * multiplier,
+                        total_usd: price * multiplier * qty,
+                        total_ves: priceVes * multiplier * qty,
                         metodo_pago: paymentMethod
                     };
                 });
@@ -1406,7 +1427,8 @@
                     'PUNTO': { usd: 0, ves: 0 },
                     'EFECTIVO': { usd: 0, ves: 0 },
                     'PAGO MOVIL': { usd: 0, ves: 0 },
-                    'DIVISA': { usd: 0, ves: 0 }
+                    'DIVISA': { usd: 0, ves: 0 },
+                    'ZELLE': { usd: 0, ves: 0 }
                 };
 
                 salesHistory.forEach(sale => {
@@ -1421,7 +1443,7 @@
                     methodsContainer.innerHTML = `
                     <div class="bg-rose-50/30 border border-rose-100/60 rounded-2xl p-4 mb-2">
                         <span class="text-[10px] font-bold text-rose-500 uppercase tracking-wider block mb-2"><i class="fas fa-chart-line mr-1"></i>Acumulado General del Historial</span>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                             <!-- Punto -->
                             <div class="bg-white border border-slate-200/80 rounded-xl p-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
                                 <div class="flex items-center space-x-1.5 text-blue-600 font-bold text-[9px] uppercase tracking-wider">
@@ -1469,9 +1491,20 @@
                                     <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['DIVISA'].ves)} BS.</span>
                                 </div>
                             </div>
+
+                            <!-- Zelle -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl p-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                                <div class="flex items-center space-x-1.5 text-indigo-600 font-bold text-[9px] uppercase tracking-wider">
+                                    <i class="fas fa-bolt text-[8px]"></i>
+                                    <span>Zelle</span>
+                                </div>
+                                <div class="mt-1.5 text-left">
+                                    <span class="text-xs sm:text-sm font-black text-slate-800 block">$${totalsByMethod['ZELLE'].usd.toFixed(2)} <span class="text-[8px] font-bold text-slate-400">USD</span></span>
+                                    <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['ZELLE'].ves)} BS.</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    `;
                 }
 
                 if (salesHistory.length === 0) {
@@ -1504,7 +1537,8 @@
                                 'PUNTO': { usd: 0, ves: 0 },
                                 'EFECTIVO': { usd: 0, ves: 0 },
                                 'PAGO MOVIL': { usd: 0, ves: 0 },
-                                'DIVISA': { usd: 0, ves: 0 }
+                                'DIVISA': { usd: 0, ves: 0 },
+                                'ZELLE': { usd: 0, ves: 0 }
                             },
                             grandTotal: { usd: 0, ves: 0 }
                         };
@@ -1559,6 +1593,7 @@
                             sale.metodo_pago === 'EFECTIVO' ? `<span class="inline-block bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-money-bill-wave mr-1 text-[7px]"></i>Efectivo</span>` :
                             sale.metodo_pago === 'PAGO MOVIL' ? `<span class="inline-block bg-purple-50 text-purple-600 border border-purple-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-mobile-alt mr-1 text-[7px]"></i>Pago Móvil</span>` :
                             sale.metodo_pago === 'DIVISA' ? `<span class="inline-block bg-amber-50 text-amber-600 border border-amber-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-wallet mr-1 text-[7px]"></i>Divisa</span>` :
+                            sale.metodo_pago === 'ZELLE' ? `<span class="inline-block bg-indigo-50 text-indigo-600 border border-indigo-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-bolt mr-1 text-[7px]"></i>Zelle</span>` :
                             `<span class="inline-block bg-slate-50 text-slate-600 border border-slate-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase">${sale.metodo_pago}</span>`
                         ) : '';
 
@@ -1623,7 +1658,7 @@
                         </div>
                         
                         <!-- Totales por método de pago del día -->
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                             <!-- Punto -->
                             <div class="bg-white border border-slate-200/40 rounded-xl p-2.5 flex flex-col justify-between shadow-[0_1px_4px_rgba(0,0,0,0.005)]">
                                 <span class="text-[9px] font-bold text-blue-600 uppercase tracking-wider"><i class="fas fa-credit-card mr-1"></i>Punto</span>
@@ -1650,6 +1685,13 @@
                                 <span class="text-[9px] font-bold text-amber-600 uppercase tracking-wider"><i class="fas fa-wallet mr-1"></i>Divisa</span>
                                 <span class="text-xs font-black text-slate-800 mt-1 block">$${dayData.totals['DIVISA'].usd.toFixed(2)} <span class="text-[8px] text-slate-400">USD</span></span>
                                 <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(dayData.totals['DIVISA'].ves)} BS.</span>
+                            </div>
+
+                            <!-- Zelle -->
+                            <div class="bg-white border border-slate-200/40 rounded-xl p-2.5 flex flex-col justify-between shadow-[0_1px_4px_rgba(0,0,0,0.005)]">
+                                <span class="text-[9px] font-bold text-indigo-600 uppercase tracking-wider"><i class="fas fa-bolt mr-1"></i>Zelle</span>
+                                <span class="text-xs font-black text-slate-800 mt-1 block">$${dayData.totals['ZELLE'].usd.toFixed(2)} <span class="text-[8px] text-slate-400">USD</span></span>
+                                <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(dayData.totals['ZELLE'].ves)} BS.</span>
                             </div>
                         </div>
                         
@@ -1821,12 +1863,37 @@
             }
 
             // Adaptar interfaz de Totales según el modo (BCV o DIVISA)
-            if (cartPriceMode === 'divisa') {
-                if (totalsContainer) {
-                    totalsContainer.className = "grid grid-cols-1 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6";
+            const divisaMethodContainer = document.getElementById('divisa-method-container');
+            if (divisaMethodContainer) {
+                if (cartPriceMode === 'divisa') {
+                    divisaMethodContainer.classList.remove('hidden');
+                    divisaMethodContainer.classList.add('flex');
+                } else {
+                    divisaMethodContainer.classList.add('hidden');
+                    divisaMethodContainer.classList.remove('flex');
                 }
-                if (totalBsCol) totalBsCol.classList.add('hidden');
-                if (totalUsdLabel) totalUsdLabel.textContent = "Total en Divisas";
+            }
+
+            const labelBs = totalBsCol ? totalBsCol.querySelector('span:first-child') : null;
+
+            if (cartPriceMode === 'divisa') {
+                if (selectedDivisaMethod === 'ZELLE') {
+                    if (totalsContainer) {
+                        totalsContainer.className = "grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6";
+                    }
+                    if (totalBsCol) {
+                        totalBsCol.classList.remove('hidden');
+                        totalBsCol.className = "text-right border-l border-slate-100 pl-4";
+                    }
+                    if (totalUsdLabel) totalUsdLabel.textContent = "Subtotal Divisa";
+                    if (labelBs) labelBs.textContent = "Total Zelle (+8%)";
+                } else {
+                    if (totalsContainer) {
+                        totalsContainer.className = "grid grid-cols-1 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6";
+                    }
+                    if (totalBsCol) totalBsCol.classList.add('hidden');
+                    if (totalUsdLabel) totalUsdLabel.textContent = "Total en Divisas";
+                }
             } else {
                 if (totalsContainer) {
                     totalsContainer.className = "grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-2xl shadow-[0_4px_18px_rgba(0,0,0,0.01)] p-5 sm:p-6";
@@ -1836,6 +1903,7 @@
                     totalBsCol.className = "text-right border-l border-slate-100 pl-4";
                 }
                 if (totalUsdLabel) totalUsdLabel.textContent = "Total en Dólares (BCV)";
+                if (labelBs) labelBs.textContent = "Total en Bolívares";
             }
 
             let html = '';
@@ -1926,7 +1994,12 @@
             
             totalUsdSpan.innerHTML = `$${totalUsd.toFixed(2)} <span class="text-[10px] font-bold text-slate-400">USD</span>`;
             
-            if (cartPriceMode === 'bcv') {
+            if (cartPriceMode === 'divisa') {
+                if (selectedDivisaMethod === 'ZELLE') {
+                    const zelleTotal = (totalUsd * 1.08).toFixed(2);
+                    totalBsSpan.innerHTML = `$${zelleTotal} <span class="text-[10px] font-bold text-rose-400">USD</span>`;
+                }
+            } else {
                 const totalBsf = (totalUsd * exchangeRate).toFixed(2);
                 totalBsSpan.innerHTML = `${formatBS(totalBsf)} <span class="text-[10px] font-bold text-rose-400">BS.</span>`;
             }
@@ -1947,6 +2020,35 @@
             } else {
                 bcvBtn.className = "px-3.5 py-1.5 text-xs font-extrabold rounded-full transition-all duration-300 text-slate-500 hover:text-slate-800";
                 divisaBtn.className = "px-3.5 py-1.5 text-xs font-black rounded-full transition-all duration-300 shadow-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white";
+            }
+            
+            // Reset method to EFECTIVO when switching modes
+            selectedDivisaMethod = 'EFECTIVO';
+            const divisaEfectivoBtn = document.getElementById('divisa-method-efectivo');
+            const divisaZelleBtn = document.getElementById('divisa-method-zelle');
+            if (divisaEfectivoBtn && divisaZelleBtn) {
+                divisaEfectivoBtn.className = "py-2.5 text-xs font-black rounded-lg transition-all duration-300 shadow-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white";
+                divisaZelleBtn.className = "py-2.5 text-xs font-extrabold rounded-lg transition-all duration-300 text-slate-500 hover:text-slate-800";
+            }
+            
+            renderCartItems();
+        }
+
+        // Switch de método de pago en Divisa (Efectivo / Zelle)
+        function setDivisaPaymentMethod(method) {
+            selectedDivisaMethod = method;
+            
+            const efectivoBtn = document.getElementById('divisa-method-efectivo');
+            const zelleBtn = document.getElementById('divisa-method-zelle');
+            
+            if (!efectivoBtn || !zelleBtn) return;
+            
+            if (method === 'EFECTIVO') {
+                efectivoBtn.className = "py-2.5 text-xs font-black rounded-lg transition-all duration-300 shadow-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white";
+                zelleBtn.className = "py-2.5 text-xs font-extrabold rounded-lg transition-all duration-300 text-slate-500 hover:text-slate-800";
+            } else {
+                efectivoBtn.className = "py-2.5 text-xs font-extrabold rounded-lg transition-all duration-300 text-slate-500 hover:text-slate-800";
+                zelleBtn.className = "py-2.5 text-xs font-black rounded-lg transition-all duration-300 shadow-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white";
             }
             
             renderCartItems();
