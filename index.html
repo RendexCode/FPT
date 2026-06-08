@@ -257,10 +257,16 @@
                                 </div>
                             </div>
 
-                            <!-- Cantidad en Stock (debajo de Código de Barra) -->
-                            <div>
-                                <label for="product-stock" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Cantidad en Stock</label>
-                                <input type="number" id="product-stock" required step="any" min="0" placeholder="0" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                            <!-- Cantidad en Stock y Aviso de Falla (en la misma fila) -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="product-stock" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Cantidad en Stock</label>
+                                    <input type="number" id="product-stock" required step="any" min="0" placeholder="0" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                                </div>
+                                <div>
+                                    <label for="product-min-stock" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Aviso de Falla (Mínimo)</label>
+                                    <input type="number" id="product-min-stock" required step="any" min="0" value="5" placeholder="5" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 transition-all duration-200">
+                                </div>
                             </div>
 
                             <!-- Foto del Producto -->
@@ -706,6 +712,7 @@
         const productDivisaPriceManualInput = document.getElementById('product-divisa-price-manual');
         const productDivisaPriceAutoInput = document.getElementById('product-divisa-price-auto');
         const productStockInput = document.getElementById('product-stock');
+        const productMinStockInput = document.getElementById('product-min-stock');
 
         // Foto del Producto Inputs
         const uploadImageTrigger = document.getElementById('upload-image-trigger');
@@ -784,6 +791,7 @@
                 productDivisaPriceManualInput.value = '';
                 productDivisaPriceAutoInput.value = '';
                 productStockInput.value = 0;
+                productMinStockInput.value = 5;
                 resetImagePreview();
                 
                 // Modo manual predeterminado
@@ -831,6 +839,7 @@
                     productPriceManualInput.value = price;
                     productDivisaPriceManualInput.value = editingProduct.precio_divisa || '';
                     productStockInput.value = editingProduct.stock || 0;
+                    productMinStockInput.value = editingProduct.aviso_minimo !== undefined && editingProduct.aviso_minimo !== null ? editingProduct.aviso_minimo : 5;
                     
                     // Cargar modo de precio guardado
                     const savedMode = editingProduct.modo_precio || 'manual';
@@ -2880,7 +2889,11 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             
-            const outOfStockProducts = allProducts.filter(p => (parseFloat(p.stock) || 0) <= 0);
+            const outOfStockProducts = allProducts.filter(p => {
+                const stockVal = parseFloat(p.stock) || 0;
+                const avisoVal = p.aviso_minimo !== undefined && p.aviso_minimo !== null ? parseFloat(p.aviso_minimo) : 5;
+                return stockVal <= avisoVal;
+            });
 
             // Encabezado
             doc.setFont("Helvetica", "bold");
@@ -2890,7 +2903,7 @@
             
             doc.setFontSize(14);
             doc.setTextColor(15, 23, 42); // Slate 900
-            doc.text("REPORTE DE PRODUCTOS FALTANTES / AGOTADOS", 14, 28);
+            doc.text("REPORTE DE PRODUCTOS FALTANTES / BAJOS DE STOCK", 14, 28);
 
             doc.setFont("Helvetica", "normal");
             doc.setFontSize(9);
@@ -2901,11 +2914,11 @@
             doc.setFont("Helvetica", "bold");
             doc.setFontSize(10);
             doc.setTextColor(15, 23, 42);
-            doc.text("RESUMEN DE FALTANTES", 14, 44);
+            doc.text("RESUMEN DE FALTANTES / ALERTAS", 14, 44);
 
             doc.setFont("Helvetica", "normal");
             doc.setFontSize(9);
-            doc.text(`Productos agotados/faltantes en total: ${outOfStockProducts.length}`, 14, 50);
+            doc.text(`Productos agotados o bajo mínimo en total: ${outOfStockProducts.length}`, 14, 50);
 
             // Línea divisoria
             doc.setDrawColor(226, 232, 240); // Slate 200
@@ -2914,36 +2927,42 @@
             let currentY = 60;
 
             if (outOfStockProducts.length > 0) {
-                const faltantesData = outOfStockProducts.map(p => [
-                    p.nombre,
-                    p.marca || '-',
-                    p.codigo || '-',
-                    `$${(parseFloat(p.costo_usd) || 0).toFixed(2)}`,
-                    `$${(parseFloat(p.precio_usd) || 0).toFixed(2)}`,
-                    '0'
-                ]);
+                const faltantesData = outOfStockProducts.map(p => {
+                    const stockVal = parseFloat(p.stock) || 0;
+                    const avisoVal = p.aviso_minimo !== undefined && p.aviso_minimo !== null ? parseFloat(p.aviso_minimo) : 5;
+                    return [
+                        p.nombre,
+                        p.marca || '-',
+                        p.codigo || '-',
+                        `$${(parseFloat(p.costo_usd) || 0).toFixed(2)}`,
+                        `$${(parseFloat(p.precio_usd) || 0).toFixed(2)}`,
+                        formatQuantity(avisoVal),
+                        formatQuantity(stockVal)
+                    ];
+                });
 
                 doc.autoTable({
                     startY: currentY,
-                    head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Stock']],
+                    head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Mínimo', 'Stock']],
                     body: faltantesData,
                     theme: 'grid',
                     headStyles: { fillColor: [225, 29, 72] }, // Rose 600
                     styles: { fontSize: 8, cellPadding: 1.5 },
                     columnStyles: {
-                        0: { cellWidth: 70 },
-                        1: { cellWidth: 30 },
-                        2: { cellWidth: 30 },
-                        3: { cellWidth: 20, halign: 'right' },
-                        4: { cellWidth: 20, halign: 'right' },
-                        5: { cellWidth: 12, halign: 'center', fontStyle: 'bold', textColor: [225, 29, 72] }
+                        0: { cellWidth: 60 },
+                        1: { cellWidth: 25 },
+                        2: { cellWidth: 25 },
+                        3: { cellWidth: 18, halign: 'right' },
+                        4: { cellWidth: 18, halign: 'right' },
+                        5: { cellWidth: 18, halign: 'center' },
+                        6: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: [225, 29, 72] }
                     }
                 });
             } else {
                 doc.setFont("Helvetica", "bold");
                 doc.setFontSize(11);
                 doc.setTextColor(22, 163, 74); // Green 600
-                doc.text("¡Excelente! No se encontraron productos agotados en el inventario.", 14, currentY + 5);
+                doc.text("¡Excelente! No se encontraron productos agotados o bajo mínimo en el inventario.", 14, currentY + 5);
             }
 
             const filename = `Faltantes_${businessName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
@@ -2993,35 +3012,45 @@
 
             const inventoryData = allProducts.map(p => {
                 const stockVal = parseFloat(p.stock) || 0;
+                const avisoVal = p.aviso_minimo !== undefined && p.aviso_minimo !== null ? parseFloat(p.aviso_minimo) : 5;
                 return [
                     p.nombre,
                     p.marca || '-',
                     p.codigo || '-',
                     `$${(parseFloat(p.costo_usd) || 0).toFixed(2)}`,
                     `$${(parseFloat(p.precio_usd) || 0).toFixed(2)}`,
+                    formatQuantity(avisoVal),
                     formatQuantity(stockVal)
                 ];
             });
 
             doc.autoTable({
                 startY: currentY,
-                head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Stock']],
+                head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Mínimo', 'Stock']],
                 body: inventoryData,
                 theme: 'grid',
                 headStyles: { fillColor: [71, 85, 105] }, // Slate 600
                 styles: { fontSize: 8, cellPadding: 1.5 },
                 columnStyles: {
-                    0: { cellWidth: 70 },
-                    1: { cellWidth: 30 },
-                    2: { cellWidth: 30 },
-                    3: { cellWidth: 20, halign: 'right' },
-                    4: { cellWidth: 20, halign: 'right' },
-                    5: { cellWidth: 12, halign: 'center' }
+                    0: { cellWidth: 60 },
+                    1: { cellWidth: 25 },
+                    2: { cellWidth: 25 },
+                    3: { cellWidth: 18, halign: 'right' },
+                    4: { cellWidth: 18, halign: 'right' },
+                    5: { cellWidth: 18, halign: 'center' },
+                    6: { cellWidth: 18, halign: 'center' }
                 },
                 didParseCell: function (data) {
-                    if (data.column.index === 5 && data.cell.text[0] === '0') {
-                        data.cell.styles.textColor = [225, 29, 72];
-                        data.cell.styles.fontStyle = 'bold';
+                    if (data.column.index === 6) {
+                        const product = allProducts[data.row.index];
+                        if (product) {
+                            const stockVal = parseFloat(product.stock) || 0;
+                            const avisoVal = product.aviso_minimo !== undefined && product.aviso_minimo !== null ? parseFloat(product.aviso_minimo) : 5;
+                            if (stockVal <= avisoVal) {
+                                data.cell.styles.textColor = [225, 29, 72]; // Rose 600
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
                     }
                 }
             });
@@ -3047,6 +3076,8 @@
                 const gradient = getGradient(product.nombre);
                 const stockVal = parseFloat(product.stock) || 0;
                 const outOfStock = stockVal === 0;
+                const avisoVal = product.aviso_minimo !== undefined && product.aviso_minimo !== null ? parseFloat(product.aviso_minimo) : 5;
+                const isLowStock = stockVal <= avisoVal;
                 const price = parseFloat(product.precio_usd) || 0;
                 const priceBsf = (price * exchangeRate).toFixed(2);
                 const priceDivisa = parseFloat(product.precio_divisa) || 0;
@@ -3113,8 +3144,8 @@
                         <div class="border-t border-slate-100"></div>
 
                         <!-- Stock Tag en la Esquina Inferior Izquierda -->
-                        <span class="absolute bottom-0 left-0 ${outOfStock ? 'bg-red-600' : 'bg-green-600'} text-white text-[9px] sm:text-[10px] font-black px-3.5 py-1.5 rounded-tr-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-bottom-left transition-all duration-300">
-                            <i class="fas fa-cubes mr-1 text-[8px] sm:text-[9px]"></i>
+                        <span class="absolute bottom-0 left-0 ${outOfStock ? 'bg-red-600' : (isLowStock ? 'bg-amber-500' : 'bg-green-600')} text-white text-[9px] sm:text-[10px] font-black px-3.5 py-1.5 rounded-tr-2xl shadow-sm uppercase tracking-wider select-none z-10 flex items-center group-hover:scale-105 origin-bottom-left transition-all duration-300">
+                            <i class="${outOfStock ? 'fas fa-cubes' : (isLowStock ? 'fas fa-exclamation-triangle' : 'fas fa-cubes')} mr-1 text-[8px] sm:text-[9px]"></i>
                             <span>${outOfStock ? 'Agotado' : `Stock: ${formatQuantity(stockVal)}`}</span>
                         </span>
 
@@ -3339,6 +3370,7 @@
             const cost = parseFloat(parseFloat(productCostInput.value).toFixed(2)) || 0;
             const percent = parseFloat(productPercentInput.value) || 0;
             const stock = parseFloat(productStockInput.value) || 0;
+            const minStock = parseFloat(productMinStockInput.value) !== undefined && !isNaN(parseFloat(productMinStockInput.value)) ? parseFloat(productMinStockInput.value) : 5;
 
             // Precios según el modo seleccionado (manual o auto)
             let price = 0;
@@ -3367,6 +3399,7 @@
                 precio_ves: price * exchangeRate,
                 precio_divisa: divisaPrice,
                 stock: stock,
+                aviso_minimo: minStock,
                 imagen: productBase64Image || null,
                 modo_precio: priceMode // Persistir el modo seleccionado ('manual' o 'auto')
             };
