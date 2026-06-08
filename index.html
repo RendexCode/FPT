@@ -579,10 +579,16 @@
                 </h1>
             </div>
             
-            <!-- Botón para recargar historial -->
-            <button onclick="loadSalesHistory()" class="text-slate-500 hover:text-rose-500 p-2 transition-colors text-sm" title="Actualizar historial">
-                <i class="fas fa-sync-alt text-base"></i>
-            </button>
+            <div class="flex items-center space-x-2.5">
+                <!-- Botón PDF para exportar historial de ventas -->
+                <button id="export-sales-pdf-btn" onclick="askSalesPdfType()" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Exportar Ventas a PDF">
+                    <i class="fas fa-file-pdf text-xs sm:text-sm"></i>
+                </button>
+                <!-- Botón para recargar historial -->
+                <button onclick="loadSalesHistory()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-rose-500 font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm hover:scale-105 active:scale-95" title="Actualizar historial">
+                    <i class="fas fa-sync-alt text-xs sm:text-sm"></i>
+                </button>
+            </div>
         </nav>
 
         <!-- CONTENIDO DEL HISTORIAL -->
@@ -603,6 +609,41 @@
                 <!-- Se rellena dinámicamente -->
             </div>
         </main>
+    </div>
+
+    <!-- MODAL: EXPORTAR VENTAS A PDF (Todas vs Hoy) -->
+    <div id="sales-pdf-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-sm w-full p-6 flex flex-col overflow-hidden relative transform scale-95 transition-all duration-300">
+            <h3 class="text-lg font-black text-slate-800 text-center mb-1 flex items-center justify-center space-x-2">
+                <i class="fas fa-file-pdf text-rose-500"></i>
+                <span>Exportar Reporte de Ventas</span>
+            </h3>
+            <p class="text-xs text-slate-400 text-center mb-6">Selecciona el rango de ventas que deseas exportar en el reporte PDF.</p>
+            
+            <div class="flex flex-col space-y-3">
+                <!-- Ventas de Hoy -->
+                <button onclick="generateSalesPDF('today')" class="w-full flex items-center justify-between px-5 py-4 bg-slate-50 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-2xl transition-all duration-200 group text-left">
+                    <div>
+                        <div class="text-sm font-black text-slate-800 group-hover:text-rose-600 transition-colors">Ventas de Hoy</div>
+                        <div class="text-slate-400 text-[10px] mt-0.5 font-medium">Solo las ventas registradas el día de hoy</div>
+                    </div>
+                    <i class="fas fa-calendar-day text-slate-400 group-hover:text-rose-500 transition-colors text-base"></i>
+                </button>
+                
+                <!-- Todas las Ventas -->
+                <button onclick="generateSalesPDF('all')" class="w-full flex items-center justify-between px-5 py-4 bg-slate-50 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-2xl transition-all duration-200 group text-left">
+                    <div>
+                        <div class="text-sm font-black text-slate-800 group-hover:text-rose-600 transition-colors">Acumulado General</div>
+                        <div class="text-slate-400 text-[10px] mt-0.5 font-medium">Todas las ventas guardadas en el historial</div>
+                    </div>
+                    <i class="fas fa-history text-slate-400 group-hover:text-rose-500 transition-colors text-base"></i>
+                </button>
+            </div>
+            
+            <button onclick="closeSalesPdfModal()" class="mt-6 text-xs font-bold text-slate-400 hover:text-slate-600 text-center transition-colors">
+                Cancelar
+            </button>
+        </div>
     </div>
 
     <!-- MODAL: SELECCIONAR MÉTODO DE PAGO -->
@@ -1741,6 +1782,189 @@
                     </div>
                 `;
             }
+        }
+
+        // --- GESTIÓN DE PDF DEL HISTORIAL DE VENTAS ---
+        function askSalesPdfType() {
+            const modal = document.getElementById('sales-pdf-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.offsetHeight; // Forzar reflujo
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }
+        }
+
+        function closeSalesPdfModal() {
+            const modal = document.getElementById('sales-pdf-modal');
+            if (modal) {
+                modal.querySelector('.transform').classList.remove('scale-100');
+                modal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 150);
+            }
+        }
+
+        function generateSalesPDF(range) {
+            closeSalesPdfModal();
+
+            if (!window.jspdf) {
+                alert("Las librerías de PDF se están cargando o no están disponibles.");
+                return;
+            }
+
+            if (salesHistory.length === 0) {
+                alert("No hay ventas registradas en el historial para exportar.");
+                return;
+            }
+
+            let filteredSales = [];
+            let titleRange = "";
+
+            if (range === 'today') {
+                const todayDate = new Date();
+                const tYear = todayDate.getFullYear();
+                const tMonth = String(todayDate.getMonth() + 1).padStart(2, '0');
+                const tDay = String(todayDate.getDate()).padStart(2, '0');
+                const todayKey = `${tYear}-${tMonth}-${tDay}`;
+
+                filteredSales = salesHistory.filter(sale => {
+                    const sDate = new Date(sale.created_at);
+                    const sYear = sDate.getFullYear();
+                    const sMonth = String(sDate.getMonth() + 1).padStart(2, '0');
+                    const sDay = String(sDate.getDate()).padStart(2, '0');
+                    const sDayKey = `${sYear}-${sMonth}-${sDay}`;
+                    return sDayKey === todayKey;
+                });
+                titleRange = "REPORTE DE VENTAS - SOLO HOY";
+            } else {
+                filteredSales = [...salesHistory];
+                titleRange = "REPORTE DE VENTAS - ACUMULADO GENERAL";
+            }
+
+            if (filteredSales.length === 0) {
+                alert("No se encontraron ventas registradas para el rango seleccionado.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+
+            const businessName = document.getElementById('business-name-display').textContent.trim() || 'RENDEX';
+            const dateStr = new Date().toLocaleDateString('es-VE', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            // Encabezado
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(225, 29, 72); // Rose 600
+            doc.text(businessName.toUpperCase(), 14, 20);
+
+            doc.setFontSize(13);
+            doc.setTextColor(15, 23, 42); // Slate 900
+            doc.text(titleRange, 14, 28);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139); // Slate 500
+            doc.text(`Fecha de generación: ${dateStr}`, 14, 34);
+
+            // Resumen de Ventas
+            const totalCount = filteredSales.length;
+            const totalUSD = filteredSales.reduce((sum, s) => sum + (parseFloat(s.total_usd) || 0), 0);
+            const totalVES = filteredSales.reduce((sum, s) => sum + (parseFloat(s.total_ves) || 0), 0);
+
+            // Calcular por método de pago
+            const methodTotals = {
+                'PUNTO': 0, 'EFECTIVO': 0, 'PAGO MOVIL': 0, 'DIVISA': 0, 'ZELLE': 0
+            };
+            filteredSales.forEach(s => {
+                const m = s.metodo_pago;
+                if (m && methodTotals[m] !== undefined) {
+                    methodTotals[m] += parseFloat(s.total_usd) || 0;
+                }
+            });
+
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text("RESUMEN DE MONTOS", 14, 44);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.text(`Total Transacciones: ${totalCount}`, 14, 50);
+            doc.text(`Total USD: $${totalUSD.toFixed(2)} USD`, 14, 55);
+            doc.text(`Total BS: ${formatBS(totalVES)} BS.`, 14, 60);
+
+            // Resumen por método de pago a la derecha
+            let methodY = 50;
+            doc.setFont("Helvetica", "bold");
+            doc.text("Total por Método (USD):", 100, 44);
+            doc.setFont("Helvetica", "normal");
+            Object.keys(methodTotals).forEach(m => {
+                if (methodTotals[m] > 0) {
+                    doc.text(`${m}: $${methodTotals[m].toFixed(2)}`, 100, methodY);
+                    methodY += 5;
+                }
+            });
+
+            const nextSectionY = Math.max(65, methodY + 5);
+
+            // Línea divisoria
+            doc.setDrawColor(226, 232, 240); // Slate 200
+            doc.line(14, nextSectionY, 196, nextSectionY);
+
+            let currentY = nextSectionY + 6;
+
+            // Ordenar de más reciente a más antigua
+            filteredSales.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            // Mapear datos a la tabla
+            const salesTableData = filteredSales.map(s => {
+                const date = new Date(s.created_at);
+                const formattedDateTime = date.toLocaleDateString('es-VE', {
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                }) + ' ' + date.toLocaleTimeString('es-VE', {
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                });
+
+                return [
+                    formattedDateTime,
+                    s.nombre_producto,
+                    s.marca_producto || '-',
+                    formatQuantity(parseFloat(s.cantidad) || 0),
+                    `$${(parseFloat(s.precio_usd) || 0).toFixed(2)}`,
+                    `$${(parseFloat(s.total_usd) || 0).toFixed(2)}`,
+                    s.metodo_pago || '-'
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['Fecha/Hora', 'Producto', 'Marca', 'Cant', 'Precio USD', 'Total USD', 'Método']],
+                body: salesTableData,
+                theme: 'grid',
+                headStyles: { fillColor: [225, 29, 72] }, // Rose 600
+                styles: { fontSize: 7.5, cellPadding: 1.5 },
+                columnStyles: {
+                    0: { cellWidth: 30 },
+                    1: { cellWidth: 60 },
+                    2: { cellWidth: 22 },
+                    3: { cellWidth: 12, halign: 'center' },
+                    4: { cellWidth: 18, halign: 'right' },
+                    5: { cellWidth: 18, halign: 'right', fontStyle: 'bold' },
+                    6: { cellWidth: 22, halign: 'center' }
+                }
+            });
+
+            const fileRangeName = range === 'today' ? 'Hoy' : 'General';
+            const filename = `Ventas_${fileRangeName}_${businessName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+            doc.save(filename);
         }
 
         async function returnProduct(saleId, productId, quantity, productName) {
