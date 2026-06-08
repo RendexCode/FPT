@@ -14,6 +14,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- HTML5 Barcode/QR Code Scanner library -->
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- jsPDF & jsPDF-AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
     <style>
         body {
             font-family: 'Outfit', sans-serif;
@@ -167,10 +170,17 @@
                     Conectando con Supabase...
                 </h2>
                 <div class="h-px flex-grow bg-slate-200/60 mx-4"></div>
-                <!-- Botón + para agregar producto -->
-                <button id="add-product-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95 flex-shrink-0" title="Agregar producto">
-                    <i class="fas fa-plus text-sm sm:text-base"></i>
-                </button>
+                <!-- Botones de Acción (PDF e Insertar) -->
+                <div class="flex items-center space-x-2 flex-shrink-0">
+                    <!-- Botón PDF para exportar inventario -->
+                    <button id="export-pdf-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Exportar Inventario y Faltantes a PDF">
+                        <i class="fas fa-file-pdf text-sm sm:text-base"></i>
+                    </button>
+                    <!-- Botón + para agregar producto -->
+                    <button id="add-product-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Agregar producto">
+                        <i class="fas fa-plus text-sm sm:text-base"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Listado de productos -->
@@ -2786,6 +2796,11 @@
             initRealtimeSubscriptions();
             initDeleteHoldEvents();
             syncAllProducts(); // Sincronización completa en segundo plano
+            
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
+            if (exportPdfBtn) {
+                exportPdfBtn.addEventListener('click', generateInventoryPDF);
+            }
         });
 
         // Eventos de conexión a Internet (Sincronización y advertencias)
@@ -2828,6 +2843,165 @@
             const num = parseFloat(qty);
             if (isNaN(num)) return '0';
             return Number.isInteger(num) ? num.toString() : parseFloat(num.toFixed(3)).toString();
+        }
+
+        // --- GENERACIÓN DE REPORTE PDF (INVENTARIO Y FALTANTES) ---
+        async function generateInventoryPDF() {
+            if (!window.jspdf) {
+                alert("Las librerías de PDF se están cargando o no están disponibles. Revisa tu conexión a internet.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            // Obtener todos los productos de IndexedDB
+            const allProducts = await getProductsFromIndexedDB();
+            
+            if (allProducts.length === 0) {
+                alert("No hay productos en el inventario para generar el PDF.");
+                return;
+            }
+
+            // Ordenar alfabéticamente
+            allProducts.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+            const businessName = document.getElementById('business-name-display').textContent.trim() || 'RENDEX';
+            const dateStr = new Date().toLocaleDateString('es-VE', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            // 1. Encabezado
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(225, 29, 72); // Rose 600
+            doc.text(businessName.toUpperCase(), 14, 20);
+            
+            doc.setFontSize(14);
+            doc.setTextColor(15, 23, 42); // Slate 900
+            doc.text("REPORTE DE INVENTARIO Y FALTANTES", 14, 28);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139); // Slate 500
+            doc.text(`Fecha de generación: ${dateStr}`, 14, 34);
+
+            // 2. Resumen Estadístico
+            const totalProducts = allProducts.length;
+            const outOfStockProducts = allProducts.filter(p => (parseFloat(p.stock) || 0) <= 0);
+            const totalStockVal = allProducts.reduce((sum, p) => sum + ((parseFloat(p.stock) || 0) * (parseFloat(p.costo_usd) || 0)), 0);
+            const totalRetailVal = allProducts.reduce((sum, p) => sum + ((parseFloat(p.stock) || 0) * (parseFloat(p.precio_usd) || 0)), 0);
+
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text("RESUMEN GENERAL", 14, 44);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.text(`Total de productos: ${totalProducts}`, 14, 50);
+            doc.text(`Productos agotados/faltantes: ${outOfStockProducts.length}`, 14, 55);
+            doc.text(`Valor total de costo en stock: $${totalStockVal.toFixed(2)} USD`, 100, 50);
+            doc.text(`Valor total de venta en stock: $${totalRetailVal.toFixed(2)} USD`, 100, 55);
+
+            // Línea divisoria
+            doc.setDrawColor(226, 232, 240); // Slate 200
+            doc.line(14, 60, 196, 60);
+
+            let currentY = 65;
+
+            // 3. Tabla de Faltantes (Agotados)
+            if (outOfStockProducts.length > 0) {
+                doc.setFont("Helvetica", "bold");
+                doc.setFontSize(11);
+                doc.setTextColor(225, 29, 72); // Rose 600
+                doc.text(`PRODUCTOS AGOTADOS / FALTANTES (${outOfStockProducts.length})`, 14, currentY);
+                
+                const faltantesData = outOfStockProducts.map(p => [
+                    p.nombre,
+                    p.marca || '-',
+                    p.codigo || '-',
+                    `$${(parseFloat(p.costo_usd) || 0).toFixed(2)}`,
+                    `$${(parseFloat(p.precio_usd) || 0).toFixed(2)}`,
+                    '0'
+                ]);
+
+                doc.autoTable({
+                    startY: currentY + 3,
+                    head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Stock']],
+                    body: faltantesData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [225, 29, 72] }, // Rose 600
+                    styles: { fontSize: 8, cellPadding: 1.5 },
+                    columnStyles: {
+                        0: { cellWidth: 70 },
+                        1: { cellWidth: 30 },
+                        2: { cellWidth: 30 },
+                        3: { cellWidth: 20, halign: 'right' },
+                        4: { cellWidth: 20, halign: 'right' },
+                        5: { cellWidth: 12, halign: 'center', fontStyle: 'bold', textColor: [225, 29, 72] }
+                    }
+                });
+
+                currentY = doc.lastAutoTable.finalY + 10;
+            } else {
+                doc.setFont("Helvetica", "bold");
+                doc.setFontSize(10);
+                doc.setTextColor(22, 163, 74); // Green 600
+                doc.text("¡No hay productos agotados! Inventario completo al 100%.", 14, currentY);
+                currentY += 8;
+            }
+
+            // Evitar saltar de página a la mitad si no cabe la cabecera
+            if (currentY > 250) {
+                doc.addPage();
+                currentY = 20;
+            }
+
+            // 4. Tabla de Inventario Completo
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(15, 23, 42); // Slate 900
+            doc.text("INVENTARIO COMPLETO", 14, currentY);
+
+            const inventoryData = allProducts.map(p => {
+                const stockVal = parseFloat(p.stock) || 0;
+                return [
+                    p.nombre,
+                    p.marca || '-',
+                    p.codigo || '-',
+                    `$${(parseFloat(p.costo_usd) || 0).toFixed(2)}`,
+                    `$${(parseFloat(p.precio_usd) || 0).toFixed(2)}`,
+                    formatQuantity(stockVal)
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY + 3,
+                head: [['Nombre', 'Marca', 'Código', 'Costo USD', 'Precio USD', 'Stock']],
+                body: inventoryData,
+                theme: 'grid',
+                headStyles: { fillColor: [71, 85, 105] }, // Slate 600
+                styles: { fontSize: 8, cellPadding: 1.5 },
+                columnStyles: {
+                    0: { cellWidth: 70 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 20, halign: 'right' },
+                    4: { cellWidth: 20, halign: 'right' },
+                    5: { cellWidth: 12, halign: 'center' }
+                },
+                didParseCell: function (data) {
+                    if (data.column.index === 5 && data.cell.text[0] === '0') {
+                        data.cell.styles.textColor = [225, 29, 72];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            });
+
+            const filename = `Inventario_${businessName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+            doc.save(filename);
         }
 
         // --- RENDERIZADO DE CATÁLOGO (Integrado con marquesina inteligente de nombres) ---
