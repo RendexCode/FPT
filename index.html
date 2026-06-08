@@ -138,10 +138,14 @@
                     <div class="absolute left-4 text-slate-400 pointer-events-none">
                         <i class="fas fa-search"></i>
                     </div>
-                    <input id="search-input" type="text" placeholder="Buscar productos por nombre o código de barra..." autocomplete="off" class="w-full pl-11 pr-20 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
+                    <input id="search-input" type="text" placeholder="Buscar productos por nombre o código de barra..." autocomplete="off" class="w-full pl-11 pr-28 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-sm sm:text-base placeholder-slate-400 transition-all duration-200">
                     <!-- Botón de Cámara en el buscador (Siempre Visible) -->
-                    <button id="search-scanner-btn" class="absolute right-12 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear código de barra para buscar">
+                    <button id="search-scanner-btn" class="absolute right-20 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Escanear código de barra para buscar">
                         <i class="fas fa-camera text-base"></i>
+                    </button>
+                    <!-- Botón de Exclamación / Precio 0 en el buscador -->
+                    <button id="zero-price-filter-btn" class="absolute right-12 text-slate-400 hover:text-rose-500 transition-colors p-1" title="Buscar productos con precio 0">
+                        <i class="fas fa-exclamation-circle text-base"></i>
                     </button>
                     <!-- Botón X para eliminar en el buscador (Siempre Visible) -->
                     <button id="clear-search-btn" class="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors p-1" title="Limpiar búsqueda">
@@ -708,6 +712,7 @@
         let hasMoreProducts = true;
         let currentSearchQuery = '';
         let currentBrandFilter = '';
+        let showZeroPriceOnly = false; // Filter products with price 0
         let infiniteScrollObserver = null;
 
         // Variables Lector de Barras
@@ -727,6 +732,7 @@
         const searchInput = document.getElementById('search-input');
         const brandSelect = document.getElementById('brand-select');
         const searchScannerBtn = document.getElementById('search-scanner-btn');
+        const zeroPriceFilterBtn = document.getElementById('zero-price-filter-btn');
         const clearSearchBtn = document.getElementById('clear-search-btn');
         const productsContainer = document.getElementById('products-container');
         const loadingMessage = document.getElementById('loading-message');
@@ -2671,6 +2677,11 @@
                     filteredProducts = filteredProducts.filter(p => p.marca === currentBrandFilter);
                 }
                 
+                // Filter by zero price
+                if (showZeroPriceOnly) {
+                    filteredProducts = filteredProducts.filter(p => (parseFloat(p.precio_usd) || 0) === 0 || (parseFloat(p.precio_ves) || 0) === 0);
+                }
+                
                 // Filter by searchQuery
                 if (searchQuery) {
                     const query = searchQuery.toLowerCase();
@@ -2761,6 +2772,10 @@
 
                 if (currentBrandFilter) {
                     queryBuilder = queryBuilder.eq('marca', currentBrandFilter);
+                }
+
+                if (showZeroPriceOnly) {
+                    queryBuilder = queryBuilder.or('precio_usd.eq.0,precio_ves.eq.0,precio_usd.is.null,precio_ves.is.null');
                 }
 
                 const { data, error } = await queryBuilder
@@ -3416,6 +3431,18 @@
             currentBrandFilter = brandSelect.value;
             loadInventory(searchInput.value.trim());
         });
+
+        zeroPriceFilterBtn.addEventListener('click', () => {
+            showZeroPriceOnly = !showZeroPriceOnly;
+            if (showZeroPriceOnly) {
+                zeroPriceFilterBtn.classList.add('text-rose-500', 'scale-110');
+                zeroPriceFilterBtn.classList.remove('text-slate-400');
+            } else {
+                zeroPriceFilterBtn.classList.remove('text-rose-500', 'scale-110');
+                zeroPriceFilterBtn.classList.add('text-slate-400');
+            }
+            loadInventory(searchInput.value.trim());
+        });
         
         clearSearchBtn.addEventListener('click', () => {
             searchInput.value = '';
@@ -3423,6 +3450,9 @@
                 brandSelect.value = '';
             }
             currentBrandFilter = '';
+            showZeroPriceOnly = false;
+            zeroPriceFilterBtn.classList.remove('text-rose-500', 'scale-110');
+            zeroPriceFilterBtn.classList.add('text-slate-400');
             loadInventory('');
             searchInput.focus();
         });
