@@ -121,9 +121,9 @@
                     </button>
                 </div>
 
-                <!-- Botón + para agregar producto -->
-                <button id="add-product-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-10 w-10 sm:h-11 sm:w-11 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Agregar producto">
-                    <i class="fas fa-plus text-lg"></i>
+                <!-- Botón Historial de Ventas -->
+                <button onclick="navigateToHistory()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-rose-500 font-bold h-10 w-10 sm:h-11 sm:w-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm hover:scale-105 active:scale-95" title="Ver historial de ventas">
+                    <i class="fas fa-history text-lg"></i>
                 </button>
             </div>
         </nav>
@@ -166,7 +166,11 @@
                 <h2 id="total-products-count" class="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                     Conectando con Supabase...
                 </h2>
-                <div class="h-px flex-grow bg-slate-200/60 ml-4"></div>
+                <div class="h-px flex-grow bg-slate-200/60 mx-4"></div>
+                <!-- Botón + para agregar producto -->
+                <button id="add-product-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95 flex-shrink-0" title="Agregar producto">
+                    <i class="fas fa-plus text-sm sm:text-base"></i>
+                </button>
             </div>
 
             <!-- Listado de productos -->
@@ -487,12 +491,7 @@
                         DIVISA
                     </button>
                 </div>
-                
-                <!-- Botón Historial de Ventas -->
-                <button onclick="navigateToHistory()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-rose-600 font-bold px-3 py-1.5 rounded-full shadow-sm text-xs transition-all flex items-center space-x-1.5" title="Ver historial de ventas">
-                    <i class="fas fa-history text-[10px]"></i>
-                    <span class="hidden sm:inline">Historial</span>
-                </button>
+
             </div>
         </nav>
 
@@ -542,9 +541,9 @@
         <!-- BARRA SUPERIOR DE HISTORIAL -->
         <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm flex-shrink-0">
             <div class="flex items-center">
-                <button onclick="backToCartFromHistory()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors mr-4" title="Volver al carrito">
+                <button onclick="backToCatalogFromHistory()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors mr-4" title="Volver al catálogo">
                     <i class="fas fa-arrow-left text-lg"></i>
-                    <span class="hidden sm:inline">Volver al Carrito</span>
+                    <span class="hidden sm:inline">Volver</span>
                 </button>
                 <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
                     Historial de Ventas
@@ -1402,7 +1401,7 @@
                     countLabel.textContent = `Ventas registradas: ${salesHistory.length}`;
                 }
 
-                // Calcular acumulados por cada método de pago
+                // Calcular acumulados globales por cada método de pago
                 const totalsByMethod = {
                     'PUNTO': { usd: 0, ves: 0 },
                     'EFECTIVO': { usd: 0, ves: 0 },
@@ -1420,52 +1419,55 @@
 
                 if (methodsContainer) {
                     methodsContainer.innerHTML = `
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <!-- Punto -->
-                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
-                            <div class="flex items-center space-x-1.5 text-blue-600 font-bold text-[10px] uppercase tracking-wider">
-                                <i class="fas fa-credit-card text-[9px]"></i>
-                                <span>Punto</span>
+                    <div class="bg-rose-50/30 border border-rose-100/60 rounded-2xl p-4 mb-2">
+                        <span class="text-[10px] font-bold text-rose-500 uppercase tracking-wider block mb-2"><i class="fas fa-chart-line mr-1"></i>Acumulado General del Historial</span>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <!-- Punto -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl p-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                                <div class="flex items-center space-x-1.5 text-blue-600 font-bold text-[9px] uppercase tracking-wider">
+                                    <i class="fas fa-credit-card text-[8px]"></i>
+                                    <span>Punto</span>
+                                </div>
+                                <div class="mt-1.5 text-left">
+                                    <span class="text-xs sm:text-sm font-black text-slate-800 block">$${totalsByMethod['PUNTO'].usd.toFixed(2)} <span class="text-[8px] font-bold text-slate-400">USD</span></span>
+                                    <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['PUNTO'].ves)} BS.</span>
+                                </div>
                             </div>
-                            <div class="mt-2 text-left">
-                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['PUNTO'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
-                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['PUNTO'].ves)} BS.</span>
-                            </div>
-                        </div>
 
-                        <!-- Efectivo Bs. -->
-                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
-                            <div class="flex items-center space-x-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
-                                <i class="fas fa-money-bill-wave text-[9px]"></i>
-                                <span>Efectivo Bs.</span>
+                            <!-- Efectivo -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl p-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                                <div class="flex items-center space-x-1.5 text-emerald-600 font-bold text-[9px] uppercase tracking-wider">
+                                    <i class="fas fa-money-bill-wave text-[8px]"></i>
+                                    <span>Efectivo Bs.</span>
+                                </div>
+                                <div class="mt-1.5 text-left">
+                                    <span class="text-xs sm:text-sm font-black text-slate-800 block">$${totalsByMethod['EFECTIVO'].usd.toFixed(2)} <span class="text-[8px] font-bold text-slate-400">USD</span></span>
+                                    <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['EFECTIVO'].ves)} BS.</span>
+                                </div>
                             </div>
-                            <div class="mt-2 text-left">
-                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['EFECTIVO'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
-                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['EFECTIVO'].ves)} BS.</span>
-                            </div>
-                        </div>
 
-                        <!-- Pago Móvil -->
-                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
-                            <div class="flex items-center space-x-1.5 text-purple-600 font-bold text-[10px] uppercase tracking-wider">
-                                <i class="fas fa-mobile-alt text-[9px]"></i>
-                                <span>Pago Móvil</span>
+                            <!-- Pago Móvil -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl p-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                                <div class="flex items-center space-x-1.5 text-purple-600 font-bold text-[9px] uppercase tracking-wider">
+                                    <i class="fas fa-mobile-alt text-[8px]"></i>
+                                    <span>Pago Móvil</span>
+                                </div>
+                                <div class="mt-1.5 text-left">
+                                    <span class="text-xs sm:text-sm font-black text-slate-800 block">$${totalsByMethod['PAGO MOVIL'].usd.toFixed(2)} <span class="text-[8px] font-bold text-slate-400">USD</span></span>
+                                    <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['PAGO MOVIL'].ves)} BS.</span>
+                                </div>
                             </div>
-                            <div class="mt-2 text-left">
-                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['PAGO MOVIL'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
-                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['PAGO MOVIL'].ves)} BS.</span>
-                            </div>
-                        </div>
 
-                        <!-- Divisa -->
-                        <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
-                            <div class="flex items-center space-x-1.5 text-amber-600 font-bold text-[10px] uppercase tracking-wider">
-                                <i class="fas fa-wallet text-[9px]"></i>
-                                <span>Divisa</span>
-                            </div>
-                            <div class="mt-2 text-left">
-                                <span class="text-sm sm:text-base font-black text-slate-800 block">$${totalsByMethod['DIVISA'].usd.toFixed(2)} <span class="text-[9px] font-bold text-slate-400">USD</span></span>
-                                <span class="text-[10px] sm:text-xs font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['DIVISA'].ves)} BS.</span>
+                            <!-- Divisa -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl p-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                                <div class="flex items-center space-x-1.5 text-amber-600 font-bold text-[9px] uppercase tracking-wider">
+                                    <i class="fas fa-wallet text-[8px]"></i>
+                                    <span>Divisa</span>
+                                </div>
+                                <div class="mt-1.5 text-left">
+                                    <span class="text-xs sm:text-sm font-black text-slate-800 block">$${totalsByMethod['DIVISA'].usd.toFixed(2)} <span class="text-[8px] font-bold text-slate-400">USD</span></span>
+                                    <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(totalsByMethod['DIVISA'].ves)} BS.</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1485,66 +1487,176 @@
                     return;
                 }
 
-                let html = '';
+                // Agrupar ventas por día
+                const salesByDay = {};
                 salesHistory.forEach(sale => {
                     const date = new Date(sale.created_at);
-                    const formattedDate = date.toLocaleString('es-VE', { 
-                        day: '2-digit', 
-                        month: '2-digit', 
-                        year: 'numeric', 
-                        hour: '2-digit', 
-                        minute: '2-digit', 
-                        second: '2-digit',
-                        hour12: true 
-                    });
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const dayKey = `${year}-${month}-${day}`;
 
-                    const brandBadge = sale.marca_producto ? `
-                        <span class="inline-block bg-slate-100 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider select-none">
-                            ${sale.marca_producto}
-                        </span>
-                    ` : '';
+                    if (!salesByDay[dayKey]) {
+                        salesByDay[dayKey] = {
+                            dateObject: date,
+                            sales: [],
+                            totals: {
+                                'PUNTO': { usd: 0, ves: 0 },
+                                'EFECTIVO': { usd: 0, ves: 0 },
+                                'PAGO MOVIL': { usd: 0, ves: 0 },
+                                'DIVISA': { usd: 0, ves: 0 }
+                            },
+                            grandTotal: { usd: 0, ves: 0 }
+                        };
+                    }
 
-                    const methodBadge = sale.metodo_pago ? (
-                        sale.metodo_pago === 'PUNTO' ? `<span class="inline-block bg-blue-50 text-blue-600 border border-blue-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-credit-card mr-1 text-[7px]"></i>Punto</span>` :
-                        sale.metodo_pago === 'EFECTIVO' ? `<span class="inline-block bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-money-bill-wave mr-1 text-[7px]"></i>Efectivo</span>` :
-                        sale.metodo_pago === 'PAGO MOVIL' ? `<span class="inline-block bg-purple-50 text-purple-600 border border-purple-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-mobile-alt mr-1 text-[7px]"></i>Pago Móvil</span>` :
-                        sale.metodo_pago === 'DIVISA' ? `<span class="inline-block bg-amber-50 text-amber-600 border border-amber-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-wallet mr-1 text-[7px]"></i>Divisa</span>` :
-                        `<span class="inline-block bg-slate-50 text-slate-600 border border-slate-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase">${sale.metodo_pago}</span>`
-                    ) : '';
+                    salesByDay[dayKey].sales.push(sale);
 
-                    html += `
-                    <div class="p-4 bg-white border border-slate-200 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-sm transition-all duration-300 flex flex-col space-y-3">
-                        <div class="flex justify-between items-start">
-                            <div class="min-w-0 pr-3">
-                                <div class="flex flex-wrap gap-1 mb-1 items-center">
-                                    ${brandBadge}
-                                    ${methodBadge}
+                    const method = sale.metodo_pago;
+                    const saleUsd = parseFloat(sale.total_usd) || 0;
+                    const saleVes = parseFloat(sale.total_ves) || 0;
+
+                    if (method && salesByDay[dayKey].totals[method]) {
+                        salesByDay[dayKey].totals[method].usd += saleUsd;
+                        salesByDay[dayKey].totals[method].ves += saleVes;
+                    }
+                    salesByDay[dayKey].grandTotal.usd += saleUsd;
+                    salesByDay[dayKey].grandTotal.ves += saleVes;
+                });
+
+                // Ordenar las llaves de días de forma descendente (los más recientes primero)
+                const sortedDayKeys = Object.keys(salesByDay).sort((a, b) => b.localeCompare(a));
+
+                let html = '';
+                sortedDayKeys.forEach(dayKey => {
+                    const dayData = salesByDay[dayKey];
+                    
+                    // Formatear fecha del día en español (ej. Lunes, 8 de junio de 2026)
+                    const dateOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+                    let dayFormatted = dayData.dateObject.toLocaleDateString('es-VE', dateOptions);
+                    // Capitalizar primer caracter
+                    dayFormatted = dayFormatted.charAt(0).toUpperCase() + dayFormatted.slice(1);
+
+                    // Generar HTML de las ventas individuales de este día
+                    let salesHtmlForDay = '';
+                    dayData.sales.forEach(sale => {
+                        const date = new Date(sale.created_at);
+                        const formattedTime = date.toLocaleTimeString('es-VE', { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit',
+                            hour12: true 
+                        });
+
+                        const brandBadge = sale.marca_producto ? `
+                            <span class="inline-block bg-slate-100 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider select-none">
+                                ${sale.marca_producto}
+                            </span>
+                        ` : '';
+
+                        const methodBadge = sale.metodo_pago ? (
+                            sale.metodo_pago === 'PUNTO' ? `<span class="inline-block bg-blue-50 text-blue-600 border border-blue-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-credit-card mr-1 text-[7px]"></i>Punto</span>` :
+                            sale.metodo_pago === 'EFECTIVO' ? `<span class="inline-block bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-money-bill-wave mr-1 text-[7px]"></i>Efectivo</span>` :
+                            sale.metodo_pago === 'PAGO MOVIL' ? `<span class="inline-block bg-purple-50 text-purple-600 border border-purple-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-mobile-alt mr-1 text-[7px]"></i>Pago Móvil</span>` :
+                            sale.metodo_pago === 'DIVISA' ? `<span class="inline-block bg-amber-50 text-amber-600 border border-amber-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase"><i class="fas fa-wallet mr-1 text-[7px]"></i>Divisa</span>` :
+                            `<span class="inline-block bg-slate-50 text-slate-600 border border-slate-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase">${sale.metodo_pago}</span>`
+                        ) : '';
+
+                        salesHtmlForDay += `
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-all duration-300 flex flex-col space-y-2">
+                            <div class="flex justify-between items-start">
+                                <div class="min-w-0 pr-3">
+                                    <div class="flex flex-wrap gap-1 mb-1 items-center">
+                                        ${brandBadge}
+                                        ${methodBadge}
+                                    </div>
+                                    <h4 class="font-bold text-slate-800 text-xs sm:text-sm truncate" title="${sale.nombre_producto}">${sale.nombre_producto}</h4>
+                                    <span class="text-[10px] text-slate-400 font-semibold block mt-0.5"><i class="fas fa-clock mr-1 text-[9px]"></i>${formattedTime}</span>
                                 </div>
-                                <h4 class="font-bold text-slate-800 text-sm truncate" title="${sale.nombre_producto}">${sale.nombre_producto}</h4>
-                                <span class="text-xs text-slate-500 font-semibold block mt-1"><i class="fas fa-clock mr-1"></i>${formattedDate}</span>
+                                
+                                <!-- Botón Devolver -->
+                                <button onclick="returnProduct(${sale.id}, ${sale.producto_id || 'null'}, ${sale.cantidad}, '${sale.nombre_producto.replace(/'/g, "\\'")}')" class="flex-shrink-0 text-[10px] font-bold px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 hover:border-rose-200 rounded-lg transition-all flex items-center space-x-1" title="Devolver producto al inventario">
+                                    <i class="fas fa-undo text-[8px]"></i>
+                                    <span>Devolver</span>
+                                </button>
                             </div>
                             
-                            <!-- Botón Devolver -->
-                            <button onclick="returnProduct(${sale.id}, ${sale.producto_id || 'null'}, ${sale.cantidad}, '${sale.nombre_producto.replace(/'/g, "\\'")}')" class="flex-shrink-0 text-xs font-bold px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 hover:border-rose-200 rounded-xl transition-all flex items-center space-x-1" title="Devolver producto al inventario">
-                                <i class="fas fa-undo text-[10px]"></i>
-                                <span>Devolver</span>
-                            </button>
+                            <div class="border-t border-slate-100/60 pt-1.5 flex flex-wrap justify-between items-baseline text-[10px] sm:text-xs gap-y-1.5">
+                                <div>
+                                    <span class="text-slate-400 font-medium">Cant:</span>
+                                    <span class="font-extrabold text-slate-800 bg-slate-100 px-1.5 py-0.25 rounded-md">${formatQuantity(sale.cantidad)}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-slate-400 font-medium">Total:</span>
+                                    <span class="font-black text-rose-600 ml-1">
+                                        $${parseFloat(sale.total_usd).toFixed(2)} USD <span class="text-slate-300">/</span> ${formatBS(sale.total_ves)} BS.
+                                    </span>
+                                    ${parseFloat(sale.precio_divisa) > 0 ? `
+                                        <span class="block text-[9px] text-amber-600 font-bold mt-0.5"><i class="fas fa-wallet mr-1 text-[8px]"></i>Total Divisa: $${(parseFloat(sale.precio_divisa) * sale.cantidad).toFixed(2)} USD</span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    });
+
+                    // Construir el contenedor del día completo
+                    html += `
+                    <div class="mb-6 bg-slate-50/40 border border-slate-200/60 rounded-2xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.005)] space-y-4">
+                        <!-- Encabezado del día -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/80 pb-3 gap-2">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="bg-rose-500 text-white p-2 rounded-xl h-9 w-9 flex items-center justify-center shadow-sm">
+                                    <i class="fas fa-calendar-alt text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Fecha</span>
+                                    <span class="text-sm sm:text-base font-black text-slate-800 capitalize leading-none">${dayFormatted}</span>
+                                </div>
+                            </div>
+                            <div class="text-left sm:text-right">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total del Día</span>
+                                <span class="text-sm sm:text-base font-black text-rose-600 leading-none">
+                                    $${dayData.grandTotal.usd.toFixed(2)} USD <span class="text-slate-300">/</span> ${formatBS(dayData.grandTotal.ves)} BS.
+                                </span>
+                            </div>
                         </div>
                         
-                        <div class="border-t border-slate-100/60 pt-2 flex flex-wrap justify-between items-baseline text-xs gap-y-2">
-                            <div>
-                                <span class="text-slate-400 font-medium">Cant:</span>
-                                <span class="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg">${formatQuantity(sale.cantidad)}</span>
+                        <!-- Totales por método de pago del día -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            <!-- Punto -->
+                            <div class="bg-white border border-slate-200/40 rounded-xl p-2.5 flex flex-col justify-between shadow-[0_1px_4px_rgba(0,0,0,0.005)]">
+                                <span class="text-[9px] font-bold text-blue-600 uppercase tracking-wider"><i class="fas fa-credit-card mr-1"></i>Punto</span>
+                                <span class="text-xs font-black text-slate-800 mt-1 block">$${dayData.totals['PUNTO'].usd.toFixed(2)} <span class="text-[8px] text-slate-400">USD</span></span>
+                                <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(dayData.totals['PUNTO'].ves)} BS.</span>
                             </div>
-                            <div class="text-right">
-                                <span class="text-slate-400 font-medium">Total:</span>
-                                <span class="font-black text-rose-600 ml-1">
-                                    $${parseFloat(sale.total_usd).toFixed(2)} USD <span class="text-slate-300">/</span> ${formatBS(sale.total_ves)} BS.
-                                </span>
-                                ${parseFloat(sale.precio_divisa) > 0 ? `
-                                    <span class="block text-[10px] text-amber-600 font-bold mt-0.5"><i class="fas fa-wallet mr-1 text-[8px]"></i>Total Divisa: $${(parseFloat(sale.precio_divisa) * sale.cantidad).toFixed(2)} USD</span>
-                                ` : ''}
+                            
+                            <!-- Efectivo -->
+                            <div class="bg-white border border-slate-200/40 rounded-xl p-2.5 flex flex-col justify-between shadow-[0_1px_4px_rgba(0,0,0,0.005)]">
+                                <span class="text-[9px] font-bold text-emerald-600 uppercase tracking-wider"><i class="fas fa-money-bill-wave mr-1"></i>Efectivo</span>
+                                <span class="text-xs font-black text-slate-800 mt-1 block">$${dayData.totals['EFECTIVO'].usd.toFixed(2)} <span class="text-[8px] text-slate-400">USD</span></span>
+                                <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(dayData.totals['EFECTIVO'].ves)} BS.</span>
                             </div>
+                            
+                            <!-- Pago Móvil -->
+                            <div class="bg-white border border-slate-200/40 rounded-xl p-2.5 flex flex-col justify-between shadow-[0_1px_4px_rgba(0,0,0,0.005)]">
+                                <span class="text-[9px] font-bold text-purple-600 uppercase tracking-wider"><i class="fas fa-mobile-alt mr-1"></i>Pago Móvil</span>
+                                <span class="text-xs font-black text-slate-800 mt-1 block">$${dayData.totals['PAGO MOVIL'].usd.toFixed(2)} <span class="text-[8px] text-slate-400">USD</span></span>
+                                <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(dayData.totals['PAGO MOVIL'].ves)} BS.</span>
+                            </div>
+                            
+                            <!-- Divisa -->
+                            <div class="bg-white border border-slate-200/40 rounded-xl p-2.5 flex flex-col justify-between shadow-[0_1px_4px_rgba(0,0,0,0.005)]">
+                                <span class="text-[9px] font-bold text-amber-600 uppercase tracking-wider"><i class="fas fa-wallet mr-1"></i>Divisa</span>
+                                <span class="text-xs font-black text-slate-800 mt-1 block">$${dayData.totals['DIVISA'].usd.toFixed(2)} <span class="text-[8px] text-slate-400">USD</span></span>
+                                <span class="text-[9px] font-bold text-rose-500 block mt-0.5">${formatBS(dayData.totals['DIVISA'].ves)} BS.</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Ventas del día -->
+                        <div class="space-y-2.5 pt-1">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block"><i class="fas fa-list mr-1"></i>Detalle de Transacciones</span>
+                            ${salesHtmlForDay}
                         </div>
                     </div>
                     `;
@@ -1626,8 +1738,8 @@
             window.location.hash = '#historial';
         }
 
-        function backToCartFromHistory() {
-            window.location.hash = '#carrito';
+        function backToCatalogFromHistory() {
+            window.location.hash = '';
         }
 
         // Actualizar visualmente el estado del botón del carrito de una tarjeta
