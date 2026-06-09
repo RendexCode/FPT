@@ -1704,8 +1704,11 @@
 
                 salesHistory = data || [];
                 
+                // Filtrar deudas para que no aparezcan en el historial general de ventas
+                const visibleSales = salesHistory.filter(s => s.metodo_pago !== 'DEUDA');
+                
                 if (countLabel) {
-                    countLabel.textContent = `Ventas registradas: ${salesHistory.length}`;
+                    countLabel.textContent = `Ventas registradas: ${visibleSales.length}`;
                 }
 
                 // Calcular acumulados globales por cada método de pago
@@ -1717,7 +1720,7 @@
                     'ZELLE': { usd: 0, ves: 0 }
                 };
 
-                salesHistory.forEach(sale => {
+                visibleSales.forEach(sale => {
                     const method = sale.metodo_pago;
                     if (method && totalsByMethod[method]) {
                         totalsByMethod[method].usd += parseFloat(sale.total_usd) || 0;
@@ -1794,7 +1797,7 @@
                     `;
                 }
 
-                if (salesHistory.length === 0) {
+                if (visibleSales.length === 0) {
                     container.innerHTML = `
                         <div class="flex flex-col items-center justify-center py-16 text-center bg-white border border-slate-100 rounded-2xl shadow-sm px-6">
                             <div class="text-slate-300 text-5xl mb-4">
@@ -1809,7 +1812,7 @@
 
                 // Agrupar ventas por día
                 const salesByDay = {};
-                salesHistory.forEach(sale => {
+                visibleSales.forEach(sale => {
                     const date = new Date(sale.created_at);
                     const year = date.getFullYear();
                     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -2041,7 +2044,9 @@
                 return;
             }
 
-            if (salesHistory.length === 0) {
+            const visibleSales = salesHistory.filter(s => s.metodo_pago !== 'DEUDA');
+
+            if (visibleSales.length === 0) {
                 alert("No hay ventas registradas en el historial para exportar.");
                 return;
             }
@@ -2056,7 +2061,7 @@
                 const tDay = String(todayDate.getDate()).padStart(2, '0');
                 const todayKey = `${tYear}-${tMonth}-${tDay}`;
 
-                filteredSales = salesHistory.filter(sale => {
+                filteredSales = visibleSales.filter(sale => {
                     const sDate = new Date(sale.created_at);
                     const sYear = sDate.getFullYear();
                     const sMonth = String(sDate.getMonth() + 1).padStart(2, '0');
@@ -2066,7 +2071,7 @@
                 });
                 titleRange = "REPORTE DE VENTAS - SOLO HOY";
             } else {
-                filteredSales = [...salesHistory];
+                filteredSales = [...visibleSales];
                 titleRange = "REPORTE DE VENTAS - ACUMULADO GENERAL";
             }
 
