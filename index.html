@@ -114,8 +114,8 @@
                     </button>
                 </div>
 
-                <!-- Pill de Tasa de cambio (BCV) -->
-                <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
+                <!-- Pill de Tasa de cambio (BCV) - Oculto en móviles -->
+                <div class="hidden md:flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
                     <span class="text-slate-500 font-medium hidden sm:inline">Tasa BCV:</span>
                     <span class="text-slate-500 font-medium sm:hidden">Bs.</span>
                     <input type="number" id="exchange-rate-input" step="0.01" autocomplete="off" class="w-16 sm:w-20 bg-transparent text-slate-800 font-bold focus:outline-none text-center" title="Tasa USD a BSF (BCV)" />
@@ -127,6 +127,11 @@
                 <!-- Botón Historial de Ventas -->
                 <button onclick="navigateToHistory()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-rose-500 font-bold h-10 w-10 sm:h-11 sm:w-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm hover:scale-105 active:scale-95" title="Ver historial de ventas">
                     <i class="fas fa-history text-lg"></i>
+                </button>
+                
+                <!-- Botón Libro de Deudas -->
+                <button onclick="navigateToDebts()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-rose-500 font-bold h-10 w-10 sm:h-11 sm:w-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm hover:scale-105 active:scale-95" title="Ver libro de deudas">
+                    <i class="fas fa-hand-holding-usd text-lg"></i>
                 </button>
             </div>
         </nav>
@@ -650,6 +655,161 @@
         </div>
     </div>
 
+    <!-- VISTA DEUDAS (Página Propia) -->
+    <div id="debts-view" class="hidden flex-col h-screen max-h-screen overflow-hidden">
+        <!-- BARRA SUPERIOR DE DEUDAS -->
+        <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-8 sticky top-0 z-40 flex items-center justify-between shadow-sm flex-shrink-0">
+            <div class="flex items-center">
+                <button onclick="backToCatalogFromDebts()" class="flex items-center space-x-2 text-slate-500 hover:text-slate-800 font-semibold transition-colors mr-4" title="Volver al catálogo">
+                    <i class="fas fa-arrow-left text-lg"></i>
+                    <span class="hidden sm:inline">Volver</span>
+                </button>
+                <h1 class="font-extrabold text-xl text-slate-800 tracking-tight">
+                    Libro de Deudas
+                </h1>
+            </div>
+            
+            <div class="flex items-center space-x-2.5">
+                <!-- Botón para crear cliente deudor -->
+                <button onclick="openCreateClientModal()" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Crear nuevo deudor">
+                    <i class="fas fa-user-plus text-xs sm:text-sm"></i>
+                </button>
+                <!-- Botón para recargar deudas -->
+                <button onclick="loadDebtsData()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-rose-500 font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm hover:scale-105 active:scale-95" title="Actualizar deudas">
+                    <i class="fas fa-sync-alt text-xs sm:text-sm"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- CONTENIDO DEL LIBRO DE DEUDAS -->
+        <main class="flex-grow max-w-2xl w-full mx-auto px-4 py-6 flex flex-col min-h-0 overflow-hidden space-y-4">
+            
+            <!-- Resumen Total Deudas -->
+            <div class="flex-shrink-0 p-4 bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl text-white shadow-xl flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">Total por Cobrar</span>
+                    <div id="debts-total-amount" class="text-xl sm:text-2xl font-black mt-1">$0.00 <span class="text-xs font-bold text-slate-400">USD</span></div>
+                    <div id="debts-total-amount-ves" class="text-xs font-medium text-slate-300 mt-0.5">0,00 BS.</div>
+                </div>
+                <div class="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center text-xl text-rose-400">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+            </div>
+
+            <!-- Cabecera de listado -->
+            <div class="flex-shrink-0 flex items-center justify-between">
+                <h3 id="debts-count-label" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cargando clientes...</h3>
+                <div class="h-px flex-grow bg-slate-200/60 ml-4"></div>
+            </div>
+
+            <!-- Listado de clientes deudores (Scroll independiente) -->
+            <div id="debts-items-container" class="flex-grow overflow-y-auto space-y-3 pr-1.5 pb-6">
+                <!-- Se rellena dinámicamente -->
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: DETALLES DE DEUDA DEL CLIENTE -->
+    <div id="client-debt-details-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-lg w-full p-6 flex flex-col max-h-[85vh] overflow-hidden relative transform scale-95 transition-all duration-300">
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="debt-modal-client-name" class="text-lg font-black text-slate-800">Nombre Cliente</h3>
+                    <span id="debt-modal-client-phone" class="text-xs text-slate-400 font-semibold block mt-0.5"><i class="fas fa-phone mr-1"></i>Sin Teléfono</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Deuda Total</span>
+                    <span id="debt-modal-total" class="text-lg font-black text-rose-600">$0.00 USD</span>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="h-px bg-slate-100 w-full mb-4"></div>
+
+            <!-- Lista de productos fiados (Scroll interno) -->
+            <div class="flex-grow overflow-y-auto space-y-3 pr-1.5 min-h-[150px]" id="debt-modal-products-list">
+                <!-- Rellenado dinámicamente -->
+            </div>
+
+            <!-- Footer con acciones: Abonar, Pagar Todo, Cerrar -->
+            <div class="mt-6 border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:space-x-3 space-y-2.5 sm:space-y-0">
+                <button onclick="payDebtAmountPrompt()" class="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-emerald-100 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Abonar / Liquidar</span>
+                </button>
+                <button onclick="closeClientDebtDetailsModal()" class="py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-sm transition-colors text-center">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CREAR NUEVO CLIENTE DEUDOR -->
+    <div id="create-client-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-sm w-full p-6 transform scale-95 transition-all duration-300">
+            <h3 class="text-lg font-black text-slate-800 mb-1 flex items-center space-x-2">
+                <i class="fas fa-user-plus text-rose-500"></i>
+                <span>Nuevo Deudor</span>
+            </h3>
+            <p class="text-xs text-slate-400 mb-5">Ingresa los datos para registrar un nuevo cliente en el libro de deudas.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="new-client-name" class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Nombre Completo</label>
+                    <input type="text" id="new-client-name" placeholder="Ej. Juan Pérez" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 text-sm transition-all">
+                </div>
+                <div>
+                    <label for="new-client-phone" class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Teléfono (Opcional)</label>
+                    <input type="text" id="new-client-phone" placeholder="Ej. 0412-1234567" autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-slate-800 text-sm transition-all">
+                </div>
+            </div>
+            
+            <div class="mt-6 flex space-x-3">
+                <button onclick="saveNewClient()" class="flex-1 py-3 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-rose-100 transition-all active:scale-[0.98]">
+                    Registrar
+                </button>
+                <button onclick="closeCreateClientModal()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-sm transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SELECCIONAR CLIENTE PARA DEUDA -->
+    <div id="checkout-debtor-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-sm w-full p-6 flex flex-col max-h-[80vh] overflow-hidden relative transform scale-95 transition-all duration-300">
+            <h3 class="text-lg font-black text-slate-800 text-center mb-1 flex items-center justify-center space-x-2">
+                <i class="fas fa-user-tag text-rose-500"></i>
+                <span>Asignar Deudor</span>
+            </h3>
+            <p class="text-xs text-slate-400 text-center mb-5">Selecciona el cliente a quien se le asignará esta deuda.</p>
+            
+            <!-- Crear cliente rápido -->
+            <button onclick="openCreateClientModalFromCheckout()" class="mb-4 w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl text-xs font-bold transition-colors flex items-center justify-center space-x-2">
+                <i class="fas fa-plus"></i>
+                <span>Nuevo Cliente Deudor</span>
+            </button>
+
+            <!-- Buscador de clientes -->
+            <div class="relative mb-3 flex items-center">
+                <div class="absolute left-3.5 text-slate-400 pointer-events-none text-xs">
+                    <i class="fas fa-search"></i>
+                </div>
+                <input type="text" id="debtor-search-input" oninput="filterDebtorsList()" placeholder="Buscar cliente por nombre..." autocomplete="off" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-xs text-slate-800 transition-all">
+            </div>
+
+            <!-- Listado de clientes -->
+            <div id="debtors-selection-list" class="flex-grow overflow-y-auto space-y-2 pr-1 min-h-[120px]">
+                <!-- Se rellena dinámicamente -->
+            </div>
+            
+            <button onclick="closeCheckoutDebtorModal()" class="mt-5 text-xs font-bold text-slate-400 hover:text-slate-600 text-center transition-colors">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
     <!-- MODAL: SELECCIONAR MÉTODO DE PAGO -->
     <div id="payment-method-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
         <div class="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-sm w-full p-6 flex flex-col overflow-hidden relative transform scale-95 transition-all duration-300">
@@ -674,6 +834,12 @@
                 <button onclick="confirmCheckoutWithMethod('PAGO MOVIL')" class="w-full py-3.5 px-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-pink-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
                     <i class="fas fa-mobile-alt text-base"></i>
                     <span>PAGO MÓVIL</span>
+                </button>
+
+                <!-- Botón de Deuda / Fiado -->
+                <button onclick="selectDebtorClientForCheckout()" class="w-full py-3.5 px-4 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-rose-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
+                    <i class="fas fa-user-clock text-base"></i>
+                    <span>A DEUDA / FIADO</span>
                 </button>
             </div>
             
@@ -713,6 +879,10 @@
         let currentSearchQuery = '';
         let currentBrandFilter = '';
         let showZeroPriceOnly = false; // Filter products with price 0
+        let initialRatesToastShown = false;
+        let debtorClients = [];
+        let selectedDebtorClientId = null;
+        let clientModalOrigin = 'debts'; // 'debts' o 'checkout'
         let infiniteScrollObserver = null;
 
         // Variables Lector de Barras
@@ -818,6 +988,12 @@
             if (historyView) {
                 historyView.classList.add('hidden');
                 historyView.classList.remove('flex');
+            }
+
+            const debtsView = document.getElementById('debts-view');
+            if (debtsView) {
+                debtsView.classList.add('hidden');
+                debtsView.classList.remove('flex');
             }
             
             // Actualizar estado del botón flotante del carrito según la ruta
@@ -972,6 +1148,14 @@
                     historyView.classList.add('flex');
                 }
                 loadSalesHistory();
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            } else if (hash === '#deudas') {
+                const debtsView = document.getElementById('debts-view');
+                if (debtsView) {
+                    debtsView.classList.remove('hidden');
+                    debtsView.classList.add('flex');
+                }
+                loadDebtsData();
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else {
                 catalogView.classList.remove('hidden');
@@ -2402,6 +2586,10 @@
                     if (priceMode === 'auto') {
                         calculatePrice();
                     }
+                    if (!initialRatesToastShown) {
+                        showRatesToast(exchangeRate, binanceRate);
+                        initialRatesToastShown = true;
+                    }
                 }
             } catch (err) {
                 console.error('Error al obtener las tasas de cambio de Supabase:', err);
@@ -2423,6 +2611,11 @@
                 renderCatalog();
                 if (priceMode === 'auto') {
                     calculatePrice();
+                }
+
+                if (!initialRatesToastShown) {
+                    showRatesToast(exchangeRate, binanceRate);
+                    initialRatesToastShown = true;
                 }
                 
                 disconnectAlert.classList.remove('hidden');
@@ -3985,6 +4178,650 @@
                 alert('Ingresa una tasa válida mayor a 0.');
             }
         });
+
+        // --- TOAST DE TASAS DE CAMBIO (MOVIL & GENERAL) ---
+        function showRatesToast(bcvValue, binanceValue) {
+            let existingToast = document.getElementById('rates-toast-notification');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.id = 'rates-toast-notification';
+            toast.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[100] max-w-[90%] sm:max-w-sm w-full bg-slate-900/95 backdrop-blur-md text-white border border-slate-800 rounded-2xl shadow-2xl p-4 flex items-center space-x-3.5 transition-all duration-500 transform translate-y-10 opacity-0';
+            
+            toast.innerHTML = `
+                <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-rose-500 to-rose-600 flex items-center justify-center flex-shrink-0 text-white shadow-md shadow-rose-900/20">
+                    <i class="fas fa-dollar-sign text-base animate-pulse"></i>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <div class="text-xs font-black uppercase tracking-wider text-rose-400">Tasas del Día Cargadas</div>
+                    <div class="flex items-center space-x-3 mt-1 text-sm font-bold text-slate-100">
+                        <span class="flex items-center"><span class="text-slate-400 font-medium mr-1">BCV:</span>${formatBS(bcvValue)}</span>
+                        <span class="text-slate-700">|</span>
+                        <span class="flex items-center"><span class="text-slate-400 font-medium mr-1">Binance:</span>${formatBS(binanceValue)}</span>
+                    </div>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-200 text-sm p-1 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            toast.offsetHeight; // Forzar reflujo
+            toast.classList.remove('translate-y-10', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                    toast.classList.add('translate-y-10', 'opacity-0');
+                    setTimeout(() => {
+                        if (toast.parentElement) toast.remove();
+                    }, 500);
+                }
+            }, 6000);
+        }
+
+        // --- GESTIÓN DE DEUDAS (LIBRO DE DEUDAS) ---
+        function navigateToDebts() {
+            window.location.hash = '#deudas';
+        }
+
+        function backToCatalogFromDebts() {
+            window.location.hash = '';
+        }
+
+        async function loadDebtsData() {
+            const container = document.getElementById('debts-items-container');
+            const countLabel = document.getElementById('debts-count-label');
+            const totalLabel = document.getElementById('debts-total-amount');
+            const totalLabelVes = document.getElementById('debts-total-amount-ves');
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="flex flex-col justify-center items-center py-16">
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-rose-500"></div>
+                    <p class="mt-3 text-slate-500 text-xs font-medium">Cargando libro de deudas...</p>
+                </div>
+            `;
+            if (countLabel) countLabel.textContent = "Cargando...";
+
+            try {
+                // Forzar carga de ventas en segundo plano si aún no existen
+                if (salesHistory.length === 0) {
+                    await loadSalesHistory();
+                }
+
+                // Obtener clientes de Supabase
+                const { data: clientsData, error: clientsError } = await _supabase
+                    .from('clientes')
+                    .select('*')
+                    .order('nombre', { ascending: true });
+
+                if (clientsError) throw clientsError;
+
+                debtorClients = clientsData || [];
+                
+                if (countLabel) {
+                    countLabel.textContent = `Clientes registrados: ${debtorClients.length}`;
+                }
+
+                let grandTotalDebtsUsd = 0;
+                let grandTotalDebtsVes = 0;
+
+                const clientsWithDebts = debtorClients.map(client => {
+                    const clientSales = salesHistory.filter(s => s.cliente_id == client.id && s.metodo_pago === 'DEUDA' && !s.pagado);
+                    const clientTotalUsd = clientSales.reduce((sum, s) => sum + (parseFloat(s.total_usd) || 0), 0);
+                    const clientTotalVes = clientSales.reduce((sum, s) => sum + (parseFloat(s.total_ves) || 0), 0);
+                    
+                    grandTotalDebtsUsd += clientTotalUsd;
+                    grandTotalDebtsVes += clientTotalVes;
+
+                    return {
+                        ...client,
+                        sales: clientSales,
+                        totalUsd: clientTotalUsd,
+                        totalVes: clientTotalVes
+                    };
+                });
+
+                if (totalLabel) {
+                    totalLabel.innerHTML = `$${grandTotalDebtsUsd.toFixed(2)} <span class="text-xs font-bold text-slate-400">USD</span>`;
+                }
+                if (totalLabelVes) {
+                    totalLabelVes.textContent = `${formatBS(grandTotalDebtsVes)} BS.`;
+                }
+
+                if (clientsWithDebts.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-16 text-center bg-white border border-slate-100 rounded-2xl shadow-sm px-6">
+                            <div class="text-slate-300 text-5xl mb-4">
+                                <i class="fas fa-users-slash"></i>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-600">No hay deudores registrados</h3>
+                            <p class="text-slate-400 text-xs mt-1 max-w-xs">Puedes crear un deudor usando el botón superior.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                clientsWithDebts.forEach(c => {
+                    const statusBadge = c.totalUsd > 0 
+                        ? `<span class="inline-block bg-rose-50 text-rose-600 border border-rose-100 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase"><i class="fas fa-exclamation-circle mr-1 text-[8px]"></i>Debe: $${c.totalUsd.toFixed(2)}</span>`
+                        : `<span class="inline-block bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase"><i class="fas fa-check-circle mr-1 text-[8px]"></i>Al día</span>`;
+
+                    html += `
+                        <div onclick="viewClientDebtDetails(${c.id})" class="p-4 bg-white border border-slate-200 rounded-2xl hover:shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:border-rose-200 transition-all duration-300 cursor-pointer flex items-center justify-between group">
+                            <div class="flex items-center space-x-3.5 min-w-0">
+                                <div class="h-10 w-10 rounded-full bg-slate-50 group-hover:bg-rose-50 text-slate-400 group-hover:text-rose-500 flex items-center justify-center text-sm font-black transition-all flex-shrink-0">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="min-w-0 text-left">
+                                    <h4 class="font-extrabold text-slate-800 text-sm group-hover:text-rose-600 transition-colors truncate">${c.nombre}</h4>
+                                    <span class="text-[10px] text-slate-400 font-semibold block mt-0.5"><i class="fas fa-phone mr-1 text-[8px]"></i>${c.telefono || 'Sin teléfono'}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2.5">
+                                ${statusBadge}
+                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-rose-400 transition-colors text-xs"></i>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error('Error al cargar datos de deudas:', err);
+                container.innerHTML = `
+                    <div class="text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm px-6">
+                        <div class="text-rose-500 text-5xl mb-4">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-700">Error al cargar deudas</h3>
+                        <p class="text-slate-500 text-sm mt-1">Revisa tu conexión y vuelve a intentarlo.</p>
+                        <button onclick="loadDebtsData()" class="mt-4 px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-xs">Reintentar</button>
+                    </div>
+                `;
+            }
+        }
+
+        function viewClientDebtDetails(clientId) {
+            selectedDebtorClientId = clientId;
+            const client = debtorClients.find(c => c.id == clientId);
+            if (!client) return;
+
+            const nameLabel = document.getElementById('debt-modal-client-name');
+            const phoneLabel = document.getElementById('debt-modal-client-phone');
+            const totalLabel = document.getElementById('debt-modal-total');
+            const listContainer = document.getElementById('debt-modal-products-list');
+
+            if (nameLabel) nameLabel.textContent = client.nombre;
+            if (phoneLabel) phoneLabel.innerHTML = `<i class="fas fa-phone mr-1"></i>${client.telefono || 'Sin teléfono'}`;
+            
+            const unpaidSales = salesHistory.filter(s => s.cliente_id == clientId && s.metodo_pago === 'DEUDA' && !s.pagado);
+            const totalOwed = unpaidSales.reduce((sum, s) => sum + (parseFloat(s.total_usd) || 0), 0);
+            
+            if (totalLabel) {
+                totalLabel.textContent = `$${totalOwed.toFixed(2)} USD`;
+            }
+
+            if (listContainer) {
+                if (unpaidSales.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                            <i class="fas fa-check-circle text-emerald-500 text-3xl mb-2 flex-shrink-0"></i>
+                            <span class="text-xs font-bold text-slate-600">Este cliente no tiene deudas pendientes</span>
+                        </div>
+                    `;
+                } else {
+                    let html = '';
+                    unpaidSales.forEach(s => {
+                        const date = new Date(s.created_at);
+                        const formattedDate = date.toLocaleDateString('es-VE', {
+                            day: '2-digit', month: '2-digit', year: '2-digit',
+                            hour: '2-digit', minute: '2-digit', hour12: true
+                        });
+                        
+                        html += `
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-left">
+                                <div class="min-w-0 pr-3">
+                                    <h5 class="font-extrabold text-slate-800 text-xs truncate" title="${s.nombre_producto}">${s.nombre_producto}</h5>
+                                    <span class="text-[9px] text-slate-400 font-semibold block mt-0.5">
+                                        ${formattedDate} | Cant: ${formatQuantity(s.cantidad)} x $${(parseFloat(s.precio_usd) || 0).toFixed(2)}
+                                    </span>
+                                </div>
+                                <div class="text-right flex-shrink-0 font-black text-rose-600 text-xs sm:text-sm">
+                                    $${(parseFloat(s.total_usd) || 0).toFixed(2)}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    listContainer.innerHTML = html;
+                }
+            }
+
+            // Abrir modal
+            const modal = document.getElementById('client-debt-details-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.offsetHeight;
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }
+        }
+
+        function closeClientDebtDetailsModal() {
+            const modal = document.getElementById('client-debt-details-modal');
+            if (modal) {
+                modal.querySelector('.transform').classList.remove('scale-100');
+                modal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 150);
+            }
+        }
+
+        async function payDebtAmountPrompt() {
+            const client = debtorClients.find(c => c.id == selectedDebtorClientId);
+            if (!client) return;
+
+            const unpaidSales = salesHistory.filter(s => s.cliente_id == selectedDebtorClientId && s.metodo_pago === 'DEUDA' && !s.pagado);
+            const totalOwed = unpaidSales.reduce((sum, s) => sum + (parseFloat(s.total_usd) || 0), 0);
+            if (totalOwed <= 0) {
+                alert("Este cliente no tiene deudas pendientes.");
+                return;
+            }
+
+            const paymentPrompt = prompt(`Cliente: ${client.nombre}\nDeuda pendiente: $${totalOwed.toFixed(2)} USD\n\nIngresa el monto que desea abonar en USD (o escribe "todos" para liquidar el total):`);
+            if (paymentPrompt === null) return; // cancel
+
+            let amountToPay = 0;
+            if (paymentPrompt.trim().toLowerCase() === 'todos' || paymentPrompt.trim().toLowerCase() === 'todo') {
+                amountToPay = totalOwed;
+            } else {
+                amountToPay = parseFloat(paymentPrompt);
+                if (isNaN(amountToPay) || amountToPay <= 0) {
+                    alert("Por favor ingresa un monto válido mayor que 0.");
+                    return;
+                }
+                if (amountToPay > totalOwed) {
+                    alert(`El abono no puede ser mayor que la deuda total ($${totalOwed.toFixed(2)} USD).`);
+                    return;
+                }
+            }
+
+            if (!checkOnlineStatus()) return;
+
+            try {
+                unpaidSales.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+                let remainingPayment = amountToPay;
+                const updatePromises = [];
+
+                for (const sale of unpaidSales) {
+                    const saleTotal = parseFloat(sale.total_usd) || 0;
+                    
+                    if (remainingPayment >= saleTotal) {
+                        updatePromises.push(
+                            _supabase
+                                .from('ventas')
+                                .update({ pagado: true })
+                                .eq('id', sale.id)
+                        );
+                        remainingPayment -= saleTotal;
+                    } else if (remainingPayment > 0) {
+                        const newTotalUsd = saleTotal - remainingPayment;
+                        const qty = parseFloat(sale.cantidad) || 1;
+                        const price = parseFloat(sale.precio_usd) || 0;
+                        const newQty = price > 0 ? newTotalUsd / price : 0;
+
+                        updatePromises.push(
+                            _supabase
+                                .from('ventas')
+                                .update({
+                                    total_usd: newTotalUsd,
+                                    total_ves: newTotalUsd * exchangeRate,
+                                    cantidad: newQty
+                                })
+                                .eq('id', sale.id)
+                        );
+                        remainingPayment = 0;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+
+                const results = await Promise.all(updatePromises);
+                const failed = results.find(r => r.error);
+                if (failed) throw failed.error;
+
+                alert("Abono registrado con éxito.");
+                closeClientDebtDetailsModal();
+                
+                salesHistory = []; // Forzar recarga
+                await loadDebtsData();
+
+            } catch (err) {
+                console.error("Error al registrar abono:", err);
+                alert("No se pudo procesar el pago: " + err.message);
+            }
+        }
+
+        async function selectDebtorClientForCheckout() {
+            closePaymentMethodModal();
+            
+            try {
+                const { data, error } = await _supabase
+                    .from('clientes')
+                    .select('*')
+                    .order('nombre', { ascending: true });
+
+                if (error) throw error;
+
+                debtorClients = data || [];
+                renderDebtorsSelectionList();
+
+                const modal = document.getElementById('checkout-debtor-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.offsetHeight;
+                    modal.querySelector('.transform').classList.remove('scale-95');
+                    modal.querySelector('.transform').classList.add('scale-100');
+                }
+            } catch (err) {
+                console.error("Error al cargar deudores:", err);
+                alert("No se pudieron cargar los deudores: " + err.message);
+            }
+        }
+
+        function renderDebtorsSelectionList(filterText = '') {
+            const listContainer = document.getElementById('debtors-selection-list');
+            if (!listContainer) return;
+
+            const filtered = debtorClients.filter(c => 
+                c.nombre.toLowerCase().includes(filterText.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-6 text-slate-400 text-xs font-semibold">
+                        Ningún deudor coincide con la búsqueda.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(c => {
+                html += `
+                    <button onclick="executeDebtCheckout(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')" class="w-full text-left p-3 hover:bg-rose-50 border border-slate-100 hover:border-rose-100 rounded-xl transition-all flex items-center space-x-3.5 group">
+                        <div class="h-8 w-8 rounded-full bg-slate-50 group-hover:bg-rose-50 text-slate-400 group-hover:text-rose-500 flex items-center justify-center text-xs transition-colors flex-shrink-0">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-extrabold text-slate-800 group-hover:text-rose-600 transition-colors">${c.nombre}</div>
+                            <div class="text-[9px] text-slate-400 font-semibold mt-0.5">${c.telefono || 'Sin teléfono'}</div>
+                        </div>
+                    </button>
+                `;
+            });
+
+            listContainer.innerHTML = html;
+        }
+
+        function filterDebtorsList() {
+            const input = document.getElementById('debtor-search-input');
+            if (input) {
+                renderDebtorsSelectionList(input.value.trim());
+            }
+        }
+
+        function closeCheckoutDebtorModal() {
+            const modal = document.getElementById('checkout-debtor-modal');
+            if (modal) {
+                modal.querySelector('.transform').classList.remove('scale-100');
+                modal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 150);
+            }
+        }
+
+        function openCreateClientModal() {
+            clientModalOrigin = 'debts';
+            openClientModal();
+        }
+
+        function openCreateClientModalFromCheckout() {
+            clientModalOrigin = 'checkout';
+            closeCheckoutDebtorModal();
+            openClientModal();
+        }
+
+        function openClientModal() {
+            const modal = document.getElementById('create-client-modal');
+            const nameInput = document.getElementById('new-client-name');
+            const phoneInput = document.getElementById('new-client-phone');
+            if (nameInput) nameInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.offsetHeight;
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+                if (nameInput) nameInput.focus();
+            }
+        }
+
+        function closeCreateClientModal() {
+            const modal = document.getElementById('create-client-modal');
+            if (modal) {
+                modal.querySelector('.transform').classList.remove('scale-100');
+                modal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    if (clientModalOrigin === 'checkout') {
+                        selectDebtorClientForCheckout();
+                    }
+                }, 150);
+            }
+        }
+
+        async function saveNewClient() {
+            const nameInput = document.getElementById('new-client-name');
+            const phoneInput = document.getElementById('new-client-phone');
+            const name = nameInput ? nameInput.value.trim() : '';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+
+            if (!name) {
+                alert("Por favor ingresa el nombre del cliente.");
+                return;
+            }
+
+            if (!checkOnlineStatus()) return;
+
+            try {
+                const { data, error } = await _supabase
+                    .from('clientes')
+                    .insert({ nombre: name, telefono: phone || null })
+                    .select();
+
+                if (error) throw error;
+
+                alert(`Cliente "${name}" registrado con éxito.`);
+
+                const modal = document.getElementById('create-client-modal');
+                if (modal) {
+                    modal.querySelector('.transform').classList.remove('scale-100');
+                    modal.querySelector('.transform').classList.add('scale-95');
+                    setTimeout(async () => {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        
+                        if (clientModalOrigin === 'checkout') {
+                            if (data && data[0]) {
+                                executeDebtCheckout(data[0].id, data[0].nombre);
+                            } else {
+                                selectDebtorClientForCheckout();
+                            }
+                        } else {
+                            await loadDebtsData();
+                        }
+                    }, 150);
+                }
+            } catch (err) {
+                console.error("Error al registrar cliente:", err);
+                alert("No se pudo registrar el cliente: " + err.message);
+            }
+        }
+
+        async function executeDebtCheckout(clientId, clientName) {
+            closeCheckoutDebtorModal();
+            
+            if (!checkOnlineStatus()) return;
+            const confirmBtn = document.getElementById('btn-vender-carrito');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Procesando...';
+            }
+
+            try {
+                const productIds = cart.map(item => item.id);
+                const { data: currentProducts, error: fetchError } = await _supabase
+                    .from('productos')
+                    .select('id, nombre, stock, marca')
+                    .in('id', productIds);
+
+                if (fetchError) throw fetchError;
+
+                const stockUpdates = [];
+                const insufficientStockItems = [];
+
+                cart.forEach(item => {
+                    const dbProduct = currentProducts.find(p => p.id === item.id);
+                    const currentStock = dbProduct ? parseFloat(dbProduct.stock) || 0 : 0;
+                    
+                    if (currentStock < item.quantity) {
+                        insufficientStockItems.push({
+                            nombre: item.nombre,
+                            currentStock,
+                            requested: item.quantity
+                        });
+                    } else {
+                        stockUpdates.push({
+                            id: item.id,
+                            newStock: currentStock - item.quantity,
+                            marca: dbProduct ? dbProduct.marca : null
+                        });
+                    }
+                });
+
+                let skipStockUpdates = false;
+
+                if (insufficientStockItems.length > 0) {
+                    const itemsList = insufficientStockItems
+                        .map(i => `- ${i.nombre}: Solicitado ${formatQuantity(i.requested)}, Disponible ${formatQuantity(i.currentStock)}`)
+                        .join('\n');
+                    
+                    const forceSale = confirm(`Atención: No hay suficiente stock para completar la venta:\n\n${itemsList}\n\n¿Deseas registrar la deuda de todas formas SIN descontar el stock del inventario?`);
+                    
+                    if (forceSale) {
+                        skipStockUpdates = true;
+                    } else {
+                        if (confirmBtn) {
+                            confirmBtn.disabled = false;
+                            confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
+                        }
+                        return;
+                    }
+                }
+
+                const salesData = cart.map(item => {
+                    const price = parseFloat(item.precio_usd) || 0;
+                    const priceVes = price * exchangeRate;
+                    const priceDivisa = parseFloat(item.precio_divisa) || 0;
+                    const qty = parseFloat(item.quantity) || 1;
+                    const dbProduct = currentProducts.find(p => p.id === item.id);
+
+                    return {
+                        producto_id: item.id,
+                        nombre_producto: item.nombre,
+                        marca_producto: dbProduct ? dbProduct.marca : null,
+                        cantidad: qty,
+                        precio_usd: price,
+                        precio_ves: priceVes,
+                        precio_divisa: priceDivisa,
+                        total_usd: price * qty,
+                        total_ves: priceVes * qty,
+                        metodo_pago: 'DEUDA',
+                        cliente_id: clientId,
+                        cliente_nombre: clientName,
+                        pagado: false
+                    };
+                });
+
+                let updatePromises = [];
+                if (!skipStockUpdates) {
+                    updatePromises = stockUpdates.map(update => {
+                        return _supabase
+                            .from('productos')
+                            .update({ stock: update.newStock })
+                            .eq('id', update.id);
+                    });
+                }
+
+                const insertSalesPromise = _supabase
+                    .from('ventas')
+                    .insert(salesData);
+
+                const results = await Promise.all([...updatePromises, insertSalesPromise]);
+                const failedUpdate = results.find(res => res.error);
+                if (failedUpdate) throw failedUpdate.error;
+
+                if (!skipStockUpdates) {
+                    stockUpdates.forEach(update => {
+                        const localIndex = fullInventory.findIndex(p => p.id === update.id);
+                        if (localIndex !== -1) {
+                            fullInventory[localIndex].stock = update.newStock;
+                        }
+                        const prod = fullInventory.find(p => p.id === update.id);
+                        if (prod) saveProductToIndexedDB(prod);
+                    });
+                }
+
+                cart = [];
+                saveCartToLocalStorage();
+                updateCartBadge();
+                closeCartModal();
+                renderCatalog();
+                
+                salesHistory = []; // Forzar recarga del historial
+                await loadSalesHistory();
+
+                alert(`Venta a deuda asignada con éxito a ${clientName}.`);
+
+            } catch (err) {
+                console.error('Error al procesar la venta a deuda:', err);
+                alert('No se pudo procesar la venta: ' + err.message);
+            } finally {
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-cash-register text-xs mr-2"></i><span>Vender</span>';
+                }
+            }
+        }
     </script>
 </body>
 </html>
