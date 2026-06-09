@@ -727,6 +727,47 @@
             <!-- Divider -->
             <div class="h-px bg-slate-100 w-full mb-4"></div>
 
+            <!-- Cabecera de items fiados -->
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider">Productos Fiados</span>
+                <button onclick="toggleManualDebtForm(true)" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl text-[11px] font-extrabold transition-colors flex items-center space-x-1">
+                    <i class="fas fa-plus"></i>
+                    <span>Agregar Producto</span>
+                </button>
+            </div>
+
+            <!-- Formulario para agregar deudas manualmente (oculto por defecto) -->
+            <div id="manual-debt-form-container" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4 space-y-3">
+                <h4 class="text-[11px] font-black text-slate-700 uppercase tracking-wider"><i class="fas fa-plus mr-1"></i>Registrar Deuda Manual</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div class="sm:col-span-2">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Producto / Concepto</label>
+                        <input type="text" id="manual-debt-product" placeholder="Ej: Bomba de Agua 1/2 HP" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-rose-400" />
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Fecha</label>
+                        <input type="date" id="manual-debt-date" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-rose-400" />
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Cantidad</label>
+                        <input type="number" id="manual-debt-qty" value="1" min="0.01" step="any" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-rose-400" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Precio Unitario ($ USD)</label>
+                        <input type="number" id="manual-debt-price" placeholder="0.00" min="0" step="any" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-rose-400" />
+                    </div>
+                </div>
+                <div class="flex space-x-2 pt-1">
+                    <button onclick="saveManualDebt()" class="flex-1 py-2 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 transition-all">
+                        <i class="fas fa-check"></i>
+                        <span>Guardar</span>
+                    </button>
+                    <button onclick="toggleManualDebtForm(false)" class="py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-xl font-bold text-xs transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+
             <!-- Lista de productos fiados (Scroll interno) -->
             <div class="flex-grow overflow-y-auto space-y-3 pr-1.5 min-h-[150px]" id="debt-modal-products-list">
                 <!-- Rellenado dinámicamente -->
@@ -834,12 +875,6 @@
                 <button onclick="confirmCheckoutWithMethod('PAGO MOVIL')" class="w-full py-3.5 px-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-pink-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
                     <i class="fas fa-mobile-alt text-base"></i>
                     <span>PAGO MÓVIL</span>
-                </button>
-
-                <!-- Botón de Deuda / Fiado -->
-                <button onclick="selectDebtorClientForCheckout()" class="w-full py-3.5 px-4 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-rose-100 flex items-center justify-center space-x-3 transition-all active:scale-[0.98]">
-                    <i class="fas fa-user-clock text-base"></i>
-                    <span>A DEUDA / FIADO</span>
                 </button>
             </div>
             
@@ -4350,6 +4385,7 @@
         }
 
         function viewClientDebtDetails(clientId) {
+            toggleManualDebtForm(false);
             selectedDebtorClientId = clientId;
             const client = debtorClients.find(c => c.id == clientId);
             if (!client) return;
@@ -4424,6 +4460,107 @@
                     modal.classList.add('hidden');
                     modal.classList.remove('flex');
                 }, 150);
+            }
+        }
+
+        function toggleManualDebtForm(show) {
+            const formContainer = document.getElementById('manual-debt-form-container');
+            if (!formContainer) return;
+            
+            if (show) {
+                formContainer.classList.remove('hidden');
+                const dateInput = document.getElementById('manual-debt-date');
+                if (dateInput) {
+                    const today = new Date().toISOString().split('T')[0];
+                    dateInput.value = today;
+                }
+                document.getElementById('manual-debt-product').value = '';
+                document.getElementById('manual-debt-qty').value = '1';
+                document.getElementById('manual-debt-price').value = '';
+            } else {
+                formContainer.classList.add('hidden');
+            }
+        }
+
+        async function saveManualDebt() {
+            const client = debtorClients.find(c => c.id == selectedDebtorClientId);
+            if (!client) return;
+
+            const productVal = document.getElementById('manual-debt-product').value.trim();
+            const dateVal = document.getElementById('manual-debt-date').value;
+            const qtyVal = parseFloat(document.getElementById('manual-debt-qty').value);
+            const priceVal = parseFloat(document.getElementById('manual-debt-price').value);
+
+            if (!productVal) {
+                alert("Ingresa el nombre del producto o concepto.");
+                return;
+            }
+            if (!dateVal) {
+                alert("Selecciona la fecha.");
+                return;
+            }
+            if (isNaN(qtyVal) || qtyVal <= 0) {
+                alert("Ingresa una cantidad válida mayor que 0.");
+                return;
+            }
+            if (isNaN(priceVal) || priceVal < 0) {
+                alert("Ingresa un precio válido (mayor o igual a 0).");
+                return;
+            }
+
+            if (!checkOnlineStatus()) return;
+
+            const saveBtn = document.querySelector('#manual-debt-form-container button[onclick="saveManualDebt()"]');
+            const originalHTML = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Guardando...';
+
+            try {
+                const selectedDate = new Date(dateVal + 'T' + new Date().toTimeString().split(' ')[0]);
+                const timestamp = selectedDate.toISOString();
+
+                const priceVes = priceVal * exchangeRate;
+                const totalUsd = priceVal * qtyVal;
+                const totalVes = priceVes * qtyVal;
+
+                const newSale = {
+                    producto_id: null,
+                    nombre_producto: productVal,
+                    marca_producto: null,
+                    cantidad: qtyVal,
+                    precio_usd: priceVal,
+                    precio_ves: priceVes,
+                    precio_divisa: 0,
+                    total_usd: totalUsd,
+                    total_ves: totalVes,
+                    metodo_pago: 'DEUDA',
+                    cliente_id: selectedDebtorClientId,
+                    cliente_nombre: client.nombre,
+                    pagado: false,
+                    created_at: timestamp
+                };
+
+                const { data, error } = await _supabase
+                    .from('ventas')
+                    .insert([newSale])
+                    .select();
+
+                if (error) throw error;
+
+                alert("Deuda registrada con éxito.");
+                toggleManualDebtForm(false);
+                
+                salesHistory = [];
+                await loadSalesHistory();
+                await loadDebtsData();
+                viewClientDebtDetails(selectedDebtorClientId);
+
+            } catch (err) {
+                console.error("Error al registrar deuda manual:", err);
+                alert("No se pudo guardar la deuda: " + err.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalHTML;
             }
         }
 
