@@ -1887,6 +1887,14 @@
                             `<span class="inline-block bg-slate-50 text-slate-600 border border-slate-100 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase">${sale.metodo_pago}</span>`
                         ) : '';
 
+                        // Determinar el total a mostrar según el método de pago (Bolívares vs USD)
+                        let totalDisplay = '';
+                        if (sale.metodo_pago === 'PUNTO' || sale.metodo_pago === 'EFECTIVO' || sale.metodo_pago === 'PAGO MOVIL') {
+                            totalDisplay = `${formatBS(sale.total_ves)} BS.`;
+                        } else {
+                            totalDisplay = `$${parseFloat(sale.total_usd).toFixed(2)} USD`;
+                        }
+
                         salesHtmlForDay += `
                         <div class="p-3 bg-white border border-slate-200 rounded-xl hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-all duration-300 flex flex-col space-y-2">
                             <div class="flex justify-between items-start">
@@ -1914,9 +1922,9 @@
                                 <div class="text-right">
                                     <span class="text-slate-400 font-medium">Total:</span>
                                     <span class="font-black text-rose-600 ml-1">
-                                        $${parseFloat(sale.total_usd).toFixed(2)} USD <span class="text-slate-300">/</span> ${formatBS(sale.total_ves)} BS.
+                                        ${totalDisplay}
                                     </span>
-                                    ${parseFloat(sale.precio_divisa) > 0 ? `
+                                    ${!(sale.metodo_pago === 'PUNTO' || sale.metodo_pago === 'EFECTIVO' || sale.metodo_pago === 'PAGO MOVIL') && parseFloat(sale.precio_divisa) > 0 ? `
                                         <span class="block text-[9px] text-amber-600 font-bold mt-0.5"><i class="fas fa-wallet mr-1 text-[8px]"></i>Total Divisa: $${(parseFloat(sale.precio_divisa) * sale.cantidad).toFixed(2)} USD</span>
                                     ` : ''}
                                 </div>
