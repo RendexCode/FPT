@@ -105,6 +105,15 @@
 
             <!-- Controles a la derecha -->
             <div class="flex items-center space-x-3">
+                <!-- Pill de Tasa de cambio (EURO) - Solo escritorio -->
+                <div class="hidden md:flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
+                    <span class="text-slate-500 font-medium">Tasa Euro:</span>
+                    <input type="number" id="euro-rate-input" step="0.01" autocomplete="off" class="w-16 sm:w-20 bg-transparent text-slate-800 font-bold focus:outline-none text-center" title="Tasa EUR a BSF (EURO)" />
+                    <button id="save-euro-rate-btn" class="text-teal-600 hover:text-teal-800 font-semibold p-0.5 rounded transition-colors" title="Guardar Tasa Euro en Supabase">
+                        <i class="fas fa-check"></i>
+                    </button>
+                </div>
+
                 <!-- Pill de Tasa de cambio (BINANCE) - Solo escritorio -->
                 <div class="hidden md:flex items-center space-x-1 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm text-sm">
                     <span class="text-slate-500 font-medium">Tasa Binance:</span>
@@ -897,6 +906,7 @@
         let fullInventory = []; 
         let exchangeRate = 1.0; // Tasa BCV
         let binanceRate = 1.0;  // Tasa Binance
+        let euroRate = 1.0;     // Tasa Euro
         let editingProduct = null;
         let productIdToDelete = null;
         let absoluteTotalCount = 0;
@@ -931,6 +941,8 @@
         const saveRateBtn = document.getElementById('save-rate-btn');
         const binanceRateInput = document.getElementById('binance-rate-input');
         const saveBinanceRateBtn = document.getElementById('save-binance-rate-btn');
+        const euroRateInput = document.getElementById('euro-rate-input');
+        const saveEuroRateBtn = document.getElementById('save-euro-rate-btn');
         const addProductBtn = document.getElementById('add-product-btn');
         
         // Buscador
@@ -2614,6 +2626,7 @@
                 if (data) {
                     const bcvData = data.find(t => t.nombre === 'BCV');
                     const binanceData = data.find(t => t.nombre === 'BINANCE');
+                    const euroData = data.find(t => t.nombre === 'EURO');
 
                     if (bcvData) {
                         exchangeRate = parseFloat(parseFloat(bcvData.valor).toFixed(2)) || 1.0;
@@ -2627,6 +2640,13 @@
                         }
                         localStorage.setItem('rendex_binance_rate', binanceRate.toString());
                     }
+                    if (euroData) {
+                        euroRate = parseFloat(parseFloat(euroData.valor).toFixed(2)) || 1.0;
+                        if (euroRateInput) {
+                            euroRateInput.value = euroRate.toFixed(2);
+                        }
+                        localStorage.setItem('rendex_euro_rate', euroRate.toString());
+                    }
                     
                     renderCatalog();
                     
@@ -2635,7 +2655,7 @@
                         calculatePrice();
                     }
                     if (!initialRatesToastShown) {
-                        showRatesToast(exchangeRate, binanceRate);
+                        showRatesToast(exchangeRate, binanceRate, euroRate);
                         initialRatesToastShown = true;
                     }
                 }
@@ -2645,6 +2665,7 @@
                 // Fallback to cache
                 const cachedBcv = localStorage.getItem('rendex_bcv_rate');
                 const cachedBinance = localStorage.getItem('rendex_binance_rate');
+                const cachedEuro = localStorage.getItem('rendex_euro_rate');
                 if (cachedBcv) {
                     exchangeRate = parseFloat(cachedBcv) || 1.0;
                     exchangeRateInput.value = exchangeRate.toFixed(2);
@@ -2655,6 +2676,12 @@
                         binanceRateInput.value = binanceRate.toFixed(2);
                     }
                 }
+                if (cachedEuro) {
+                    euroRate = parseFloat(cachedEuro) || 1.0;
+                    if (euroRateInput) {
+                        euroRateInput.value = euroRate.toFixed(2);
+                    }
+                }
                 
                 renderCatalog();
                 if (priceMode === 'auto') {
@@ -2662,7 +2689,7 @@
                 }
 
                 if (!initialRatesToastShown) {
-                    showRatesToast(exchangeRate, binanceRate);
+                    showRatesToast(exchangeRate, binanceRate, euroRate);
                     initialRatesToastShown = true;
                 }
                 
@@ -4227,8 +4254,35 @@
             }
         });
 
+        // --- GUARDAR TASA DE CAMBIO EURO EN SUPABASE ---
+        saveEuroRateBtn.addEventListener('click', async () => {
+            if (!checkOnlineStatus()) return;
+            const rate = parseFloat(euroRateInput.value);
+            if (!isNaN(rate) && rate > 0) {
+                try {
+                    const formattedRate = parseFloat(rate.toFixed(2));
+                    const { error } = await _supabase
+                        .from('tasa')
+                        .update({ valor: formattedRate.toString() })
+                        .eq('nombre', 'EURO');
+
+                    if (error) throw error;
+                    
+                    euroRate = formattedRate;
+                    euroRateInput.value = formattedRate.toFixed(2);
+                    renderCatalog();
+                    alert('Tasa de cambio EURO actualizada con éxito en Supabase.');
+                } catch (err) {
+                    console.error('Error al actualizar tasa EURO en Supabase:', err);
+                    alert('No se pudo guardar la tasa: ' + err.message);
+                }
+            } else {
+                alert('Ingresa una tasa válida mayor a 0.');
+            }
+        });
+
         // --- TOAST DE TASAS DE CAMBIO (MOVIL & GENERAL) ---
-        function showRatesToast(bcvValue, binanceValue) {
+        function showRatesToast(bcvValue, binanceValue, euroValue) {
             let existingToast = document.getElementById('rates-toast-notification');
             if (existingToast) {
                 existingToast.remove();
@@ -4244,10 +4298,12 @@
                 </div>
                 <div class="flex-grow min-w-0">
                     <div class="text-xs font-black uppercase tracking-wider text-rose-400">Tasas del Día Cargadas</div>
-                    <div class="flex items-center space-x-3 mt-1 text-sm font-bold text-slate-100">
+                    <div class="flex items-center gap-x-3 mt-1 text-sm font-bold text-slate-100 flex-wrap">
                         <span class="flex items-center"><span class="text-slate-400 font-medium mr-1">BCV:</span>${formatBS(bcvValue)}</span>
                         <span class="text-slate-700">|</span>
                         <span class="flex items-center"><span class="text-slate-400 font-medium mr-1">Binance:</span>${formatBS(binanceValue)}</span>
+                        <span class="text-slate-700">|</span>
+                        <span class="flex items-center"><span class="text-slate-400 font-medium mr-1">Euro:</span>${formatBS(euroValue)}</span>
                     </div>
                 </div>
                 <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-200 text-sm p-1 transition-colors">
