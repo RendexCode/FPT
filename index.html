@@ -1604,7 +1604,8 @@
                     const isZelle = paymentMethod === 'ZELLE';
                     const multiplier = isZelle ? 1.08 : 1.0;
                     
-                    const price = parseFloat(item.precio_usd) || 0;
+                    const isDivisaPayment = paymentMethod === 'DIVISA' || paymentMethod === 'ZELLE';
+                    const price = isDivisaPayment ? (parseFloat(item.precio_divisa) || 0) : (parseFloat(item.precio_usd) || 0);
                     const priceVes = price * exchangeRate;
                     const priceDivisa = parseFloat(item.precio_divisa) || 0;
                     const qty = parseFloat(item.quantity) || 1;
@@ -4955,7 +4956,7 @@
                 }
 
                 const salesData = cart.map(item => {
-                    const price = parseFloat(item.precio_usd) || 0;
+                    const price = cartPriceMode === 'divisa' ? (parseFloat(item.precio_divisa) || 0) : (parseFloat(item.precio_usd) || 0);
                     const priceVes = price * exchangeRate;
                     const priceDivisa = parseFloat(item.precio_divisa) || 0;
                     const qty = parseFloat(item.quantity) || 1;
