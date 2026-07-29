@@ -3583,9 +3583,12 @@
                 return;
             }
 
-            const allProducts = await getProductsFromIndexedDB();
+            const rawProducts = await getProductsFromIndexedDB();
+            // Opción B: Filtrar únicamente productos con stock mayor a 0
+            const allProducts = rawProducts.filter(p => (parseFloat(p.stock) || 0) > 0);
+
             if (allProducts.length === 0) {
-                alert("No hay productos en el inventario para generar el desglose financiero.");
+                alert("No hay productos con existencia/stock disponible para generar el desglose financiero.");
                 return;
             }
 
