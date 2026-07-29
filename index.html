@@ -188,11 +188,15 @@
                     Conectando con Supabase...
                 </h2>
                 <div class="h-px flex-grow bg-slate-200/60 mx-4"></div>
-                <!-- Botones de Acción (PDF e Insertar) -->
+                <!-- Botones de Acción (PDF, Desglose e Insertar) -->
                 <div class="flex items-center space-x-2 flex-shrink-0">
                     <!-- Botón PDF para exportar inventario -->
                     <button id="export-pdf-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Exportar Inventario y Faltantes a PDF">
                         <i class="fas fa-file-pdf text-sm sm:text-base"></i>
+                    </button>
+                    <!-- Botón PDF Desglose Financiero -->
+                    <button id="export-desglose-pdf-btn" class="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-emerald-300 hover:scale-105 active:scale-95" title="Desglose Financiero y Valoración en PDF (USD y BS)">
+                        <i class="fas fa-calculator text-sm sm:text-base"></i>
                     </button>
                     <!-- Botón + para agregar producto -->
                     <button id="add-product-btn" class="bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-md hover:shadow-rose-300 hover:scale-105 active:scale-95" title="Agregar producto">
@@ -3318,6 +3322,11 @@
             if (exportPdfBtn) {
                 exportPdfBtn.addEventListener('click', generateInventoryPDF);
             }
+
+            const exportDesglosePdfBtn = document.getElementById('export-desglose-pdf-btn');
+            if (exportDesglosePdfBtn) {
+                exportDesglosePdfBtn.addEventListener('click', generateDesglosePDF);
+            }
         });
 
         // Eventos de conexión a Internet (Sincronización y advertencias)
@@ -3565,6 +3574,242 @@
 
             const filename = `Inventario_${businessName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
             doc.save(filename);
+        }
+
+        // --- GENERACIÓN DE REPORTE PDF DE DESGLOSE FINANCIERO Y VALORACIÓN (USD Y BS) ---
+        async function generateDesglosePDF() {
+            if (!window.jspdf) {
+                alert("Las librerías de PDF se están cargando o no están disponibles. Revisa tu conexión a internet.");
+                return;
+            }
+
+            const allProducts = await getProductsFromIndexedDB();
+            if (allProducts.length === 0) {
+                alert("No hay productos en el inventario para generar el desglose financiero.");
+                return;
+            }
+
+            // Ordenar alfabéticamente por nombre
+            allProducts.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+            const businessName = document.getElementById('business-name-display')?.textContent.trim() || 'RENDEX';
+            const dateStr = new Date().toLocaleDateString('es-VE', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+
+            const currentRate = (typeof exchangeRate !== 'undefined' && exchangeRate > 0) ? exchangeRate : 0;
+
+            // Totales globales
+            let totalStockUnits = 0;
+            let totalCostUSD = 0;
+            let totalRetailUSD = 0;
+
+            // Agrupación por marca
+            const brandStats = {};
+
+            allProducts.forEach(p => {
+                const stock = parseFloat(p.stock) || 0;
+                const cost = parseFloat(p.costo_usd) || 0;
+                const price = parseFloat(p.precio_usd) || 0;
+
+                const itemCostTotal = stock * cost;
+                const itemRetailTotal = stock * price;
+
+                totalStockUnits += stock;
+                totalCostUSD += itemCostTotal;
+                totalRetailUSD += itemRetailTotal;
+
+                const brandName = (p.marca && p.marca.trim()) ? p.marca.trim() : 'Sin Marca / General';
+                if (!brandStats[brandName]) {
+                    brandStats[brandName] = {
+                        count: 0,
+                        stock: 0,
+                        costUSD: 0,
+                        retailUSD: 0
+                    };
+                }
+                brandStats[brandName].count += 1;
+                brandStats[brandName].stock += stock;
+                brandStats[brandName].costUSD += itemCostTotal;
+                brandStats[brandName].retailUSD += itemRetailTotal;
+            });
+
+            const totalProfitUSD = totalRetailUSD - totalCostUSD;
+            const profitMarginPct = totalCostUSD > 0 ? ((totalProfitUSD / totalCostUSD) * 100).toFixed(1) : '0.0';
+
+            const totalCostVES = totalCostUSD * currentRate;
+            const totalRetailVES = totalRetailUSD * currentRate;
+            const totalProfitVES = totalProfitUSD * currentRate;
+
+            // ENCABEZADO
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(16, 185, 129); // Emerald 500
+            doc.text(businessName.toUpperCase(), 14, 20);
+
+            doc.setFontSize(14);
+            doc.setTextColor(15, 23, 42); // Slate 900
+            doc.text("DESGLOSE FINANCIERO Y VALORACIÓN DE INVENTARIO", 14, 28);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139); // Slate 500
+            doc.text(`Fecha de emisión: ${dateStr}`, 14, 34);
+            doc.text(`Tasa de Cambio (BCV): ${currentRate > 0 ? formatBS(currentRate) + ' BS/USD' : 'No registrada'}`, 14, 39);
+
+            // CUADRO RESUMEN EJECUTIVO (USD Y BS)
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(15, 23, 42);
+            doc.text("RESUMEN GENERAL DE CAPITAL Y GANANCIA PROYECTADA", 14, 48);
+
+            // Dibujar caja de fondo para el resumen
+            doc.setFillColor(241, 245, 249); // Slate 100
+            doc.roundedRect(14, 52, 182, 34, 3, 3, 'F');
+
+            doc.setFontSize(9);
+            doc.setTextColor(51, 65, 85); // Slate 700
+
+            // Columna 1: Existencias y Costo (Capital Invertido)
+            doc.setFont("Helvetica", "bold");
+            doc.text("Piezas Totales en Stock:", 18, 58);
+            doc.setFont("Helvetica", "normal");
+            doc.text(`${formatQuantity(totalStockUnits)} unidades (${allProducts.length} productos)`, 62, 58);
+
+            doc.setFont("Helvetica", "bold");
+            doc.text("Capital Invertido (Costo):", 18, 65);
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(225, 29, 72); // Rose 600
+            doc.text(`$${totalCostUSD.toFixed(2)} USD`, 62, 65);
+            doc.setFont("Helvetica", "normal");
+            doc.setTextColor(71, 85, 105);
+            doc.text(`(${formatBS(totalCostVES)} BS)`, 110, 65);
+
+            // Columna 2: Valor Venta y Margen
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(51, 65, 85);
+            doc.text("Valoración a Venta:", 18, 72);
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(16, 185, 129); // Emerald 600
+            doc.text(`$${totalRetailUSD.toFixed(2)} USD`, 62, 72);
+            doc.setFont("Helvetica", "normal");
+            doc.setTextColor(71, 85, 105);
+            doc.text(`(${formatBS(totalRetailVES)} BS)`, 110, 72);
+
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(51, 65, 85);
+            doc.text("Ganancia Proyectada:", 18, 79);
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(37, 99, 235); // Blue 600
+            doc.text(`$${totalProfitUSD.toFixed(2)} USD  [+${profitMarginPct}%]`, 62, 79);
+            doc.setFont("Helvetica", "normal");
+            doc.setTextColor(71, 85, 105);
+            doc.text(`(${formatBS(totalProfitVES)} BS)`, 120, 79);
+
+            let currentY = 93;
+
+            // TABLA 1: DESGLOSE POR MARCA / CATEGORÍA
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text("1. DESGLOSE VALORIZADO POR MARCA / CATEGORÍA", 14, currentY);
+
+            currentY += 4;
+
+            const brandRows = Object.keys(brandStats).sort().map(brand => {
+                const b = brandStats[brand];
+                const profit = b.retailUSD - b.costUSD;
+                return [
+                    brand,
+                    `${b.count} p/s`,
+                    formatQuantity(b.stock),
+                    `$${b.costUSD.toFixed(2)}`,
+                    `$${b.retailUSD.toFixed(2)}`,
+                    `$${profit.toFixed(2)}`,
+                    currentRate > 0 ? `${formatBS(b.costUSD * currentRate)} BS` : '-'
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['Marca / Categoría', 'Modelos', 'Stock Total', 'Costo Total ($)', 'Venta Total ($)', 'Ganancia Est. ($)', 'Costo Total (BS)']],
+                body: brandRows,
+                theme: 'grid',
+                headStyles: { fillColor: [16, 185, 129] }, // Emerald 500
+                styles: { fontSize: 8, cellPadding: 1.5 },
+                columnStyles: {
+                    0: { cellWidth: 45 },
+                    1: { cellWidth: 18, halign: 'center' },
+                    2: { cellWidth: 20, halign: 'center' },
+                    3: { cellWidth: 24, halign: 'right' },
+                    4: { cellWidth: 24, halign: 'right' },
+                    5: { cellWidth: 24, halign: 'right' },
+                    6: { cellWidth: 27, halign: 'right' }
+                }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // Verificar espacio antes de la siguiente tabla
+            if (currentY > 250) {
+                doc.addPage();
+                currentY = 20;
+            }
+
+            // TABLA 2: DETALLE PRODUCTO POR PRODUCTO
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text("2. DETALLE VALORIZADO PRODUCTO POR PRODUCTO", 14, currentY);
+
+            currentY += 4;
+
+            const detailedRows = allProducts.map(p => {
+                const stock = parseFloat(p.stock) || 0;
+                const cost = parseFloat(p.costo_usd) || 0;
+                const price = parseFloat(p.precio_usd) || 0;
+
+                const subCostUSD = stock * cost;
+                const subRetailUSD = stock * price;
+                const subRetailVES = subRetailUSD * currentRate;
+
+                return [
+                    p.nombre,
+                    p.marca || '-',
+                    formatQuantity(stock),
+                    `$${cost.toFixed(2)}`,
+                    `$${subCostUSD.toFixed(2)}`,
+                    `$${price.toFixed(2)}`,
+                    `$${subRetailUSD.toFixed(2)}`,
+                    currentRate > 0 ? `${formatBS(subRetailVES)} BS` : '-'
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['Producto', 'Marca', 'Stock', 'Costo U.', 'Subtotal Costo ($)', 'Venta U.', 'Subtotal Venta ($)', 'Subtotal Venta (BS)']],
+                body: detailedRows,
+                theme: 'grid',
+                headStyles: { fillColor: [71, 85, 105] }, // Slate 600
+                styles: { fontSize: 7.5, cellPadding: 1.5 },
+                columnStyles: {
+                    0: { cellWidth: 48 },
+                    1: { cellWidth: 22 },
+                    2: { cellWidth: 15, halign: 'center' },
+                    3: { cellWidth: 18, halign: 'right' },
+                    4: { cellWidth: 23, halign: 'right' },
+                    5: { cellWidth: 18, halign: 'right' },
+                    6: { cellWidth: 23, halign: 'right' },
+                    7: { cellWidth: 25, halign: 'right' }
+                }
+            });
+
+            // Guardar documento
+            doc.save(`Desglose_Financiero_Inventario_${new Date().toISOString().slice(0,10)}.pdf`);
         }
 
         // --- RENDERIZADO DE CATÁLOGO (Integrado con marquesina inteligente de nombres) ---
