@@ -3576,6 +3576,41 @@
             doc.save(filename);
         }
 
+        // --- OBTENER INVENTARIO ACTUALIZADO PARA REPORTES (ONLINE / OFFLINE) ---
+        async function getLatestProductsForReport() {
+            try {
+                if (navigator.onLine) {
+                    let allProducts = [];
+                    let page = 0;
+                    const pageSize = 1000;
+                    let hasMore = true;
+                    while (hasMore) {
+                        const from = page * pageSize;
+                        const to = from + pageSize - 1;
+                        const { data, error } = await _supabase
+                            .from('productos')
+                            .select('*')
+                            .order('nombre', { ascending: true })
+                            .range(from, to);
+                        if (error) throw error;
+                        const batch = data || [];
+                        allProducts = [...allProducts, ...batch];
+                        if (batch.length < pageSize) {
+                            hasMore = false;
+                        }
+                        page++;
+                    }
+                    if (allProducts.length > 0) {
+                        await cacheProductsLocally(allProducts);
+                        return allProducts;
+                    }
+                }
+            } catch (e) {
+                console.warn("No se pudo obtener inventario actualizado de Supabase para el reporte, usando caché local:", e);
+            }
+            return await getProductsFromIndexedDB();
+        }
+
         // --- GENERACIÓN DE REPORTE PDF DE DESGLOSE FINANCIERO Y VALORACIÓN (USD Y BS) ---
         async function generateDesglosePDF() {
             if (!window.jspdf) {
@@ -3583,9 +3618,12 @@
                 return;
             }
 
-            const rawProducts = await getProductsFromIndexedDB();
-            // Opción B: Filtrar únicamente productos con stock mayor a 0
-            const allProducts = rawProducts.filter(p => (parseFloat(p.stock) || 0) > 0);
+            const rawProducts = await getLatestProductsForReport();
+            // Opción B: Filtrar estrictamente productos con stock mayor a 0
+            const allProducts = rawProducts.filter(p => {
+                const s = parseFloat(p.stock);
+                return !isNaN(s) && s > 0;
+            });
 
             if (allProducts.length === 0) {
                 alert("No hay productos con existencia/stock disponible para generar el desglose financiero.");
@@ -3771,7 +3809,9 @@
 
             currentY += 4;
 
-            const detailedRows = allProducts.map(p => {
+            const detailedRows = allProducts
+                .filter(p => (parseFloat(p.stock) || 0) > 0)
+                .map(p => {
                 const stock = parseFloat(p.stock) || 0;
                 const cost = parseFloat(p.costo_usd) || 0;
                 const price = parseFloat(p.precio_usd) || 0;
